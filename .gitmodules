@@ -1,0 +1,3 @@
+[submodule "uplink-sys/uplink-c"]
+	path = uplink-sys/uplink-c
+	url = https://github.com/storj/uplink-c.git
