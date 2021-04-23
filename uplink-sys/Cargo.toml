@@ -1,0 +1,13 @@
+[package]
+name = "uplink-sys"
+version = "0.1.0"
+authors = ["Cameron Fyfe <cameron.j.fyfe@gmail.com>"]
+edition = "2018"
+link = "uplink"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+bindgen = "0.58.1"
+
+[dependencies]
