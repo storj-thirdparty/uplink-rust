@@ -13,6 +13,5 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 RUN rustup toolchain install 1.50.0 && rustup default 1.50.0
 
 # Install Go
-RUN apt install wget
 RUN wget -c https://golang.org/dl/go1.16.3.linux-amd64.tar.gz -O - | tar -xz -C /usr/local
 ENV PATH="/usr/local/go/bin:${PATH}"
