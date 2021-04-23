@@ -57,6 +57,8 @@ fn main() {
         .generate()
         .expect("Error generating bindings.")
         // Write bindings to file to be referenced by main build
-        .write_to_file(PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not defined")).join("bindings.rs"))
+        .write_to_file(
+            PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not defined")).join("bindings.rs"),
+        )
         .expect("Error writing bindings to file.");
 }
