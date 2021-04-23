@@ -1,0 +1,30 @@
+name: uplink-sys
+
+# Only run CI on updates to main branch
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: main
+
+# Show colors for cargo output
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    # Checkout repo
+    - uses: actions/checkout@v2
+    # Checkout submodules
+    - name: Checkout Submodules
+      run: git submodule update --init
+    # Build uplink-sys crate
+    - name: Build
+      run: make build
+      working-directory: uplink-sys
+    # Run uplink-sys crate tests
+    - name: Run tests
+      run: make test
+      working-directory: uplink-sys
