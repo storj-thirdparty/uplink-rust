@@ -49,7 +49,7 @@ fn main() {
         } else {
             println!(
                 "Invalid bucket iterator. Error: {:?}.",
-                p_bucket_iterator_err
+                *p_bucket_iterator_err
             );
         }
 
