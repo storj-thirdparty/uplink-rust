@@ -26,7 +26,7 @@ fn main() {
     // for static linking:
     //   - Linux/OSX => looks for libuplink.a
     //   - Windows => looks for libuplink.lib
-    println!("cargo:rustc-link-lib=static={}", "uplink");
+    println!("cargo:rustc-link-lib=static=uplink");
     // Add uplink-c build directory to library search path
     println!(
         "cargo:rustc-link-search={}",
