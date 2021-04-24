@@ -1,4 +1,7 @@
 # uplink-sys
+
+[![Actions Status](https://github.com/storj-thirdparty/uplink-rust/workflows/uplink-sys%20build/badge.svg)](https://github.com/storj-thirdparty/uplink-rust/actions)
+
 This crate provides Rust bindings to [uplink-c](https://github.com/storj/uplink-c/), the C interface for the storj uplink API library.
 
 [TODO]() is the safe wrapper crate for this library.
