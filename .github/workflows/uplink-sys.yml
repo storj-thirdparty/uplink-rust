@@ -17,6 +17,9 @@ jobs:
     steps:
     # Checkout repo
     - uses: actions/checkout@v2
+    # Checkout submodules
+    - name: Checkout Submodules
+      run: git submodule update --init
     # Rustfmt
     - name: rustfmt
       run: cargo fmt --all -- --check
@@ -26,9 +29,6 @@ jobs:
       # workaround for clippy bug where it emits warnings instead of errors if it's not a clean build (or in this case we just fudge the timestamps of .rs files)
       run: find . | grep "\.rs$" | xargs touch ; cargo clippy --workspace -- -D clippy::all
       working-directory: uplink-sys
-    # Checkout submodules
-    - name: Checkout Submodules
-      run: git submodule update --init
     # Build uplink-sys crate
     - name: Build
       run: make build
