@@ -19,7 +19,7 @@ jobs:
     - uses: actions/checkout@v2
     # Rustfmt
     - name: rustfmt
-      run: cargo fmt --workspace -- --check
+      run: cargo fmt --all -- --check
       working-directory: uplink-sys
     # Clippy
     - name: clippy
