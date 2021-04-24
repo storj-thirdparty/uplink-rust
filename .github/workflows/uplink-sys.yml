@@ -17,6 +17,15 @@ jobs:
     steps:
     # Checkout repo
     - uses: actions/checkout@v2
+    # Rustfmt
+    - name: rustfmt
+      run: cargo fmt --workspace -- --check
+      working-directory: uplink-sys
+    # Clippy
+    - name: clippy
+      # workaround for clippy bug where it emits warnings instead of errors if it's not a clean build (or in this case we just fudge the timestamps of .rs files)
+      run: find . | grep "\.rs$" | xargs touch ; cargo clippy --workspace -- -D clippy::all
+      working-directory: uplink-sys
     # Checkout submodules
     - name: Checkout Submodules
       run: git submodule update --init
@@ -25,6 +34,6 @@ jobs:
       run: make build
       working-directory: uplink-sys
     # Run uplink-sys crate tests
-    - name: Run tests
+    - name: Tests
       run: make test
       working-directory: uplink-sys
