@@ -7,8 +7,8 @@ This crate provides Rust bindings to [uplink-c](https://github.com/storj/uplink-
 ## Linux
  - Install [Go](https://golang.org/doc/install)
  - Install [Rust](https://www.rust-lang.org/tools/install)  
- - Install make  
-  `sudo apt install make`
+ - Install GCC and make
+  `sudo apt install build-essential`
  - Install libclang (required by bindgen for generating platform specific c bindings)  
   `sudo apt install libclang-dev`
  - Build crate  
