@@ -1,4 +1,4 @@
-name: uplink-sys build
+name: uplink-sys
 
 # Only run CI on updates to main branch
 on:
