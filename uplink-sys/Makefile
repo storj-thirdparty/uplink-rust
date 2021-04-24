@@ -5,13 +5,13 @@ default: build
 
 .PHONY: build
 build:
-		cargo build
+	cargo build
 
 .PHONY: test
 test:
-		cargo test
+	cargo test
 
 .PHONY: clean
 clean:
-		cargo clean
-		rm -rf $(UPLINK_C)/.build
+	cargo clean
+	rm -rf $(UPLINK_C)/.build
