@@ -68,6 +68,15 @@ fn main() {
                 "Bucket {} => name: {}, created: {}",
                 bucket_count, bucket_name, created
             );
+
+            // Free memory
+            uplink_sys::uplink_free_bucket(p_bucket_result);
         }
+
+        // Free memory
+        uplink_sys::uplink_free_access_result(access_result);
+        uplink_sys::uplink_free_project_result(project_result);
+        uplink_sys::uplink_free_bucket_iterator(p_bucket_iterator);
+        uplink_sys::uplink_free_error(p_bucket_iterator_err);
     }
 }
