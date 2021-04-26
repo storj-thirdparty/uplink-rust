@@ -17,6 +17,6 @@ This crate provides Rust bindings to [uplink-c](https://github.com/storj/uplink-
  - Build crate  
   `make build` (from `uplink-sys` directory)
   
-## Examples
+# Examples
 For a usage example see `examples/list_buckets`.  This contains a rust project that lists buckets for a project, you just need to add access parameters.
 [TODO]() is a safe library crate wrapping this sys crate so more examples using the wrapper library can be found there.
