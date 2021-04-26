@@ -93,3 +93,11 @@ unsafe {
 
 # uplink
 In the future a safe crate may be added to this repo to wrap the unsafe pointer/memory handling of the sys crate.
+
+# Testing
+The project has been tested on the following operating systems:
+```
+* ubuntu
+	* Version: 20.04.2 LTS
+	* Processor: Intel® Core™ i7-10510U CPU @ 1.80GHz × 8
+```
