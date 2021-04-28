@@ -38,6 +38,12 @@ fn main() {
         uplink_c_header.to_string_lossy()
     );
 
+    // Manually link to core and security libs on MacOS
+    #[cfg(target_os = "macos")]
+    {
+        println!("cargo:rustc-flags=-l framework=CoreFoundation -l framework=Security");
+    }
+
     bindgen::Builder::default()
         // Use 'allow lists' to avoid generating bindings for system header includes
         // a lot of which isn't required and can't be handled safely anyway.
