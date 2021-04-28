@@ -15,11 +15,16 @@ This crate provides Rust bindings to [uplink-c](https://github.com/storj/uplink-
  - Install libclang (required by bindgen for generating platform specific c bindings)  
   `sudo apt install libclang-dev`
  - Checkout this repo  
- - Checkout uplink-c submodule  
-  `git submodule update --init`
  - Build crate  
   `make build` (from `uplink-sys` directory)
-
+  
+## macOS
+ - Install [Go](https://golang.org/doc/install)  
+ - Install [Rust](https://www.rust-lang.org/tools/install)  
+ - Checkout this repo  
+ - Build crate  
+  `make build` (from `uplink-sys` directory)
+  
 # Building (from crates.io) (TODO ONCE CRATE IS PUBLISHED)
 ## Linux 
  - Install [Go](https://golang.org/doc/install)  
