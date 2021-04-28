@@ -24,13 +24,13 @@ fn main() {
 
     // Link (statically) to uplink-c library during build
     println!("cargo:rustc-link-lib=static=uplink");
-    
+
     // Add uplink-c build directory to library search path
     println!(
         "cargo:rustc-link-search={}",
         uplink_c_build.to_string_lossy()
     );
-    
+
     // Make uplink-c interface header a dependency of the build
     println!(
         "cargo:rerun-if-changed={}",
