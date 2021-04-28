@@ -8,7 +8,7 @@ Originally developed and tested using:
 `Go 1.16.2`
 `uplink-c v1.2.3`
 
-Should work with other versions and on OS X but has not been tested yet.
+Should work with other versions but has not been extensively tested.
 
 See [uplink-sys README](https://github.com/storj-thirdparty/uplink-rust/tree/main/uplink-sys) for build instructions.
 
