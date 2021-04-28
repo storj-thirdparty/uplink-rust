@@ -100,4 +100,7 @@ The project has been tested on the following operating systems:
 * ubuntu
 	* Version: 20.04.2 LTS
 	* Processor: Intel® Core™ i7-10510U CPU @ 1.80GHz × 8
+* macOS
+	* Version: 10.15.7
+	* Processor: 2.6 GHz 6-Core Intel Corei7
 ```
