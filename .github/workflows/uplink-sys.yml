@@ -33,7 +33,11 @@ jobs:
     - name: Build
       run: make build
       working-directory: uplink-sys
+    # Create secrets file for tests
+    - name: Create secrets file
+      run: printf ${{ secrets.STORJ_TEST_SAT_ADDRESS }}\n${{ secrets.STORJ_TEST_API_KEY }} > test_secrets.txt
+      working-directory: uplink-sys
     # Run uplink-sys crate tests
     - name: Tests
-      run: make test
+      run: make test ; rm test_secrets.txt
       working-directory: uplink-sys
