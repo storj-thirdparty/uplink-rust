@@ -18,4 +18,3 @@ $(UPLINK_C)/.git:
 .PHONY: clean
 clean:
 	cargo clean
-	rm -rf $(UPLINK_C)/.build

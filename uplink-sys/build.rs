@@ -5,8 +5,21 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
-    // Directory containing uplink-c project
-    let uplink_c_dir = PathBuf::from("uplink-c");
+    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not defined"));
+
+    // Directory containing uplink-c project source
+    let uplink_c_src = PathBuf::from("uplink-c");
+    // Directory containing uplink-c project for building
+    let uplink_c_dir = out_dir.join("uplink-c");
+    // Copy project to OUT_DIR for building
+    Command::new("cp")
+        .args(&[
+            "-R",
+            &uplink_c_src.to_string_lossy(),
+            &uplink_c_dir.to_string_lossy(),
+        ])
+        .status()
+        .expect("Failed to copy uplink-c directory.");
 
     // Build uplink-c
     // generates precompiled lib and header files in .build directory
@@ -55,15 +68,13 @@ fn main() {
         .allowlist_function("uplink_.*")
         // This header file is the main API interface and includes all other header files that are required
         // (bindgen runs c preprocessor so we don't need to include nested headers)
-        .header("uplink-c/.build/uplink/uplink.h")
+        .header(uplink_c_dir.join(".build/uplink/uplink.h").to_string_lossy())
         // Also make headers included by main header dependencies of the build
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
         // Generate bindings
         .generate()
         .expect("Error generating bindings.")
         // Write bindings to file to be referenced by main build
-        .write_to_file(
-            PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not defined")).join("bindings.rs"),
-        )
+        .write_to_file(out_dir.join("bindings.rs"))
         .expect("Error writing bindings to file.");
 }
