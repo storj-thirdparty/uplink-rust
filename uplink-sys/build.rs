@@ -68,7 +68,11 @@ fn main() {
         .allowlist_function("uplink_.*")
         // This header file is the main API interface and includes all other header files that are required
         // (bindgen runs c preprocessor so we don't need to include nested headers)
-        .header(uplink_c_dir.join(".build/uplink/uplink.h").to_string_lossy())
+        .header(
+            uplink_c_dir
+                .join(".build/uplink/uplink.h")
+                .to_string_lossy(),
+        )
         // Also make headers included by main header dependencies of the build
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
         // Generate bindings
