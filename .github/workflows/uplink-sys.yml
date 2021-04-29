@@ -44,4 +44,4 @@ jobs:
     # Verify crate can build for publishing
     - name: Crate Publish Test
       run: make publish-test
-      working-direcotry: uplink-sys
+      working-directory: uplink-sys
