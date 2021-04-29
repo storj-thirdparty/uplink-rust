@@ -1,9 +1,15 @@
 [package]
 name = "uplink-sys"
 version = "0.1.0"
-authors = ["Cameron Fyfe <cameron.j.fyfe@gmail.com>"]
+authors = ["Cameron Fyfe <cameron.j.fyfe@gmail.com>", "utropicmedia"]
 edition = "2018"
 link = "uplink"
+description = "Unsafe rust bindings for libuplink - the storj protocol library."
+readme = "README.md"
+license-file = "LICENSE"
+license = "Apache-2.0"
+repository = "https://github.com/storj-thirdparty/uplink-rust"
+keywords = ["storj", "decentralized storage"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
