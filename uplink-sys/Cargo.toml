@@ -6,7 +6,6 @@ edition = "2018"
 link = "uplink"
 description = "Unsafe rust bindings for libuplink - the storj protocol library."
 readme = "README.md"
-license-file = "LICENSE"
 license = "Apache-2.0"
 repository = "https://github.com/storj-thirdparty/uplink-rust"
 keywords = ["storj", "decentralized storage"]
