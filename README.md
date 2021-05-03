@@ -1,6 +1,8 @@
 # uplink-rust
 
 [![Actions Status](https://github.com/storj-thirdparty/uplink-rust/workflows/uplink-sys/badge.svg)](https://github.com/storj-thirdparty/uplink-rust/actions)
+![Crates.io](https://img.shields.io/crates/v/uplink-sys)
+
 
 Originally developed and tested using:
 `Ubuntu 20.04`
