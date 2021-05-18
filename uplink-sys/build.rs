@@ -66,6 +66,7 @@ fn main() {
         .allowlist_type("uplink_const_char")
         // All uplink functions start with uplink_
         .allowlist_function("uplink_.*")
+        .allowlist_var("UPLINK_ERROR_.*")
         // This header file is the main API interface and includes all other header files that are required
         // (bindgen runs c preprocessor so we don't need to include nested headers)
         .header(
