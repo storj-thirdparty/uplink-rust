@@ -5,17 +5,40 @@ use std::fmt;
 
 use uplink_sys as ulksys;
 
-/// The error type that this create use to wrap errors.
+pub(crate) type BoxError = Box<dyn stderr::Error + Send + Sync>;
+
+/// The error type that this crate use for wrapping errors.
+#[non_exhaustive]
 #[derive(Debug)]
 pub enum Error {
+    /// Identifies errors produced by the internal implementation (e.g.
+    /// exchanging values with the C, etc. )that aren't expected to happen.
+    Internal(Internal),
     /// Identifies invalid arguments passed to a function or method.
     InvalidArguments(Args),
     /// Identifies a native error returned by the underlying Uplink C bindings
     /// library.
-    Uplink(UplinkErrorDetails),
+    Uplink(Uplink),
 }
 
 impl Error {
+    /// Creates an `Internal` variant with the provided context message.
+    pub(crate) fn new_internal(ctx_msg: &str) -> Self {
+        Error::Internal(Internal {
+            ctx_msg: String::from(ctx_msg),
+            inner: None,
+        })
+    }
+
+    /// Creates an `Internal` variant from the provided context message and
+    /// the error that originated it.
+    pub(crate) fn new_internal_with_inner(ctx_msg: &str, berr: BoxError) -> Self {
+        Error::Internal(Internal {
+            ctx_msg: String::from(ctx_msg),
+            inner: Some(berr),
+        })
+    }
+
     /// Convenient constructor for creating an InvalidArguments Error.
     /// See [`Args`] documentation to know about the convention for the value of
     /// the `names` parameter because this constructor panics if they are
@@ -27,7 +50,7 @@ impl Error {
     /// Convenient constructor for creating an Uplink Error.
     /// It returns None if ulkerr is null.
     pub(crate) fn new_uplink(ulkerr: *mut ulksys::UplinkError) -> Option<Self> {
-        UplinkErrorDetails::from_raw(ulkerr).map(Self::Uplink)
+        Uplink::from_raw(ulkerr).map(Self::Uplink)
     }
 }
 
@@ -36,6 +59,7 @@ impl stderr::Error for Error {
         match self {
             Error::InvalidArguments { .. } => None,
             Error::Uplink { .. } => None,
+            Error::Internal(Internal { inner, .. }) => inner.as_ref().map(|be| &**be as _),
         }
     }
 }
@@ -49,11 +73,14 @@ impl fmt::Display for Error {
             Error::Uplink(details) => {
                 write!(f, "{}", details)
             }
+            Error::Internal(details) => {
+                write!(f, "{}", details)
+            }
         }
     }
 }
 
-/// Represents invalid arguments regarding the business domain.
+/// Represents invalid arguments error regarding the business domain.
 ///
 /// # Example
 ///
@@ -136,7 +163,7 @@ impl fmt::Display for Args {
 /// Wraps a native error returned by the underlying Uplink C bindings library
 /// providing the access to its details.
 #[derive(Debug)]
-pub struct UplinkErrorDetails {
+pub struct Uplink {
     /// The error code returned by the underlying Uplink C bindings library.
     pub code: i32,
     /// The error message returned by the underlying Uplink C bindings library
@@ -144,14 +171,18 @@ pub struct UplinkErrorDetails {
     pub details: String,
 }
 
-impl UplinkErrorDetails {
+impl Uplink {
+    /// Creates a new `Uplink` from a pointer to the uplink
+    /// c-bindings error struct. It returns None if pointer is null.
+    /// The returned instance has a copy of everything that requires from the
+    /// passed pointer, so the ownership of all its resources remains in the
+    /// caller, hence it must care about releasing them.
     fn from_raw(ulkerr: *mut ulksys::UplinkError) -> Option<Self> {
         if ulkerr.is_null() {
             return None;
         }
 
-        // This is safe because the we have checked just above that the pointer
-        // isn't null
+        // SAFETY: We have checked just above that the pointer isn't null.
         unsafe {
             Some(Self {
                 code: (*ulkerr).code,
@@ -160,6 +191,7 @@ impl UplinkErrorDetails {
         }
     }
 
+    /// Returns a human friendly error message based on the error code.
     fn message(&self) -> &str {
         match self.code as u32 {
             ulksys::UPLINK_ERROR_INTERNAL => "internal",
@@ -179,7 +211,7 @@ impl UplinkErrorDetails {
     }
 }
 
-impl fmt::Display for UplinkErrorDetails {
+impl fmt::Display for Uplink {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
@@ -188,5 +220,29 @@ impl fmt::Display for UplinkErrorDetails {
             self.message(),
             self.details,
         )
+    }
+}
+
+/// Represents an error that happen because of the violation of an internal
+/// assumption.
+/// An assumption can be violated by the use of a function that returns an error
+/// when it should never return it or because it's validated explicitly by the
+/// implementation.
+/// An assumption examples is: a bucket's name returned by the Storj Satellite
+/// must always contain UTF-8 valid characters.
+#[derive(Debug)]
+pub struct Internal {
+    /// A human friendly message to provide context of the error.
+    pub ctx_msg: String,
+    /// The inner error that caused this internal error; it's None when some
+    /// internal state/values are expected but those are rare situations because
+    /// the most of the times this internal errors should be originated by an
+    /// inner error.
+    inner: Option<BoxError>,
+}
+
+impl fmt::Display for Internal {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}", self.ctx_msg)
     }
 }

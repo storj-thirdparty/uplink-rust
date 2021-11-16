@@ -8,6 +8,7 @@ pub(crate) mod helpers;
 pub(crate) mod project;
 
 pub mod access;
+pub mod bucket;
 pub use encryption_key::EncryptionKey;
 pub use error::Error;
 pub use project::Project;
