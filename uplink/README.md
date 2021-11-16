@@ -17,7 +17,7 @@ General entities:
 
 - [X] [Access](https://pkg.go.dev/storj.io/uplink#Access)
 - [X] [Bucket](https://pkg.go.dev/storj.io/uplink#Bucket)
-- [ ] [Bucket Iterator](https://pkg.go.dev/storj.io/uplink#BucketIterator)
+- [X] [Bucket Iterator](https://pkg.go.dev/storj.io/uplink#BucketIterator)
 - [ ] [Config](https://pkg.go.dev/storj.io/uplink#Config)
 - [ ] [Commit Upload Options](https://pkg.go.dev/storj.io/uplink#CommitUploadOptions)
 - [ ] [Custom Metadata](https://pkg.go.dev/storj.io/uplink#CustomMetadata)
