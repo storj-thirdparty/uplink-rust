@@ -15,7 +15,7 @@ offering an safe and idiomatic Rust [Storj Uplink][storj-uplink].
 
 General entities:
 
-- [ ] [Access](https://pkg.go.dev/storj.io/uplink#Access)
+- [X] [Access](https://pkg.go.dev/storj.io/uplink#Access)
 - [ ] [Bucket](https://pkg.go.dev/storj.io/uplink#Bucket)
 - [ ] [Bucket Iterator](https://pkg.go.dev/storj.io/uplink#BucketIterator)
 - [ ] [Config](https://pkg.go.dev/storj.io/uplink#Config)
@@ -35,8 +35,9 @@ General entities:
 - [ ] [Part Iterator](https://pkg.go.dev/storj.io/uplink#PartIterator)
 - [ ] [Part Upload](https://pkg.go.dev/storj.io/uplink#PartUpload)
 - [ ] [Permission](https://pkg.go.dev/storj.io/uplink#Permission)
+- [X] [Permission](https://pkg.go.dev/storj.io/uplink#Permission)
 - [ ] [Project](https://pkg.go.dev/storj.io/uplink#Project)
-- [ ] [Share Prefix](https://pkg.go.dev/storj.io/uplink#SharePrefix)
+- [X] [Share Prefix](https://pkg.go.dev/storj.io/uplink#SharePrefix)
 - [ ] [System Metadata](https://pkg.go.dev/storj.io/uplink#SystemMetadata)
 - [ ] [Upload](https://pkg.go.dev/storj.io/uplink#Upload)
 - [ ] [Upload Info](https://pkg.go.dev/storj.io/uplink#UploadInfo)
