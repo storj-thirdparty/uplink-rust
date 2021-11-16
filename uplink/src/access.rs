@@ -1,9 +1,11 @@
 //! Storj DCS Access Grant and bound types.
 
+use crate::config::Config;
 use crate::{helpers, EncryptionKey, Ensurer, Error, Result};
 
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
+use std::ptr;
 use std::time::Duration;
 use std::vec::Vec;
 
@@ -31,20 +33,19 @@ impl Grant {
     /// Creates a new access grant from a serialized access grant string.
     pub fn new(serialized_access: &str) -> Result<Self> {
         let saccess = helpers::cstring_from_str_fn_arg("serialized_access", serialized_access)?;
-        let accres;
+
         // SAFETY: we trust that the underlying c-binding is safe, nonetheless
         // we ensure accres is correct through the ensure method of the
         // implemented Ensurer trait.
-        unsafe {
-            accres = *ulksys::uplink_parse_access(saccess.as_ptr() as *mut c_char).ensure();
-        }
+        let accres =
+            unsafe { *ulksys::uplink_parse_access(saccess.as_ptr() as *mut c_char).ensure() };
 
         if let Some(e) = Error::new_uplink(accres.error) {
             drop_uplink_sys_access_result(accres);
-            return Err(e);
+            Err(e)
+        } else {
+            Ok(Grant { inner: accres })
         }
-
-        Ok(Grant { inner: accres })
     }
 
     /// Generates a new access grant using a passphrase requesting to the
@@ -58,18 +59,17 @@ impl Grant {
         let api_key = helpers::cstring_from_str_fn_arg("api_key", api_key)?;
         let passphrase = helpers::cstring_from_str_fn_arg("passphrase", passphrase)?;
 
-        let accres;
         // SAFETY: we trust that the underlying c-binding is safe, nonetheless
         // we ensure accres is correct through the ensure method of the
         // implemented Ensurer trait.
-        unsafe {
-            accres = *ulksys::uplink_request_access_with_passphrase(
+        let accres = unsafe {
+            *ulksys::uplink_request_access_with_passphrase(
                 satellite_addr.as_ptr() as *mut c_char,
                 api_key.as_ptr() as *mut c_char,
                 passphrase.as_ptr() as *mut c_char,
             )
-            .ensure();
-        }
+            .ensure()
+        };
 
         Error::new_uplink(accres.error).map_or(Ok(Grant { inner: accres }), |err| {
             drop_uplink_sys_access_result(accres);
@@ -90,16 +90,16 @@ impl Grant {
     ) -> Result<()> {
         let bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
         let prefix = helpers::cstring_from_str_fn_arg("prefix", prefix)?;
-        let uerr;
+
         // SAFETY: we trust that the underlying c-binding is safe.
-        unsafe {
-            uerr = ulksys::uplink_access_override_encryption_key(
+        let uerr = unsafe {
+            ulksys::uplink_access_override_encryption_key(
                 self.inner.access,
                 bucket.as_ptr() as *mut c_char,
                 prefix.as_ptr() as *mut c_char,
                 encryption_key.as_uplink_c(),
-            );
-        }
+            )
+        };
 
         Error::new_uplink(uerr).map_or(Ok(()), |err| {
             drop_uplink_sys_error(uerr);
@@ -109,40 +109,35 @@ impl Grant {
 
     /// Returns the satellite node URL associated with this access grant.
     pub fn satellite_address(&self) -> Result<&str> {
-        let strres;
         // SAFETY: we trust that the underlying c-binding is safe, nonetheless
         // we ensure strres is correct through the ensure method of the
         // implemented Ensurer trait.
-        unsafe {
-            strres = *ulksys::uplink_access_satellite_address(self.inner.access).ensure();
-        }
+        let strres =
+            unsafe { *ulksys::uplink_access_satellite_address(self.inner.access).ensure() };
 
         if let Some(e) = Error::new_uplink(strres.error) {
             drop_uplink_sys_string_result(strres);
             return Err(e);
         }
 
-        let addrres;
+        let address;
         // SAFETY: at this point we have already checked that strres.string is
         // NOT NULL.
         unsafe {
-            addrres = CStr::from_ptr(strres.string).to_str();
-            drop_uplink_sys_string_result(strres);
-        }
+            address = CStr::from_ptr(strres.string).to_str();
+            drop_uplink_sys_string_result(strres)
+        };
 
-        Ok(addrres.expect("invalid underlying c-binding"))
+        Ok(address.expect("invalid underlying c-binding"))
     }
 
     /// Serializes an access grant such that it can be used to create a
     /// [`Self::new()`] instance of this type or parsed with other tools.
     pub fn serialize(&self) -> Result<&str> {
-        let strres;
         // SAFETY: we trust that the underlying c-binding is safe, nonetheless
         // we ensure strres is correct through the ensure method of the
         // implemented Ensurer trait.
-        unsafe {
-            strres = *ulksys::uplink_access_serialize(self.inner.access).ensure();
-        }
+        let strres = unsafe { *ulksys::uplink_access_serialize(self.inner.access).ensure() };
 
         if let Some(e) = Error::new_uplink(strres.error) {
             drop_uplink_sys_string_result(strres);
@@ -178,24 +173,68 @@ impl Grant {
             ulk_prefixes.push(sp.as_uplink_c())
         }
 
-        let accres;
         // SAFETY: we trust that the underlying c-binding is safe, nonetheless
         // we ensure accres is correct through the ensure method of the
         // implemented Ensurer trait.
-        unsafe {
-            accres = *ulksys::uplink_access_share(
+        let accres = unsafe {
+            *ulksys::uplink_access_share(
                 self.inner.access,
                 permission.to_uplink_c(),
                 ulk_prefixes.as_mut_ptr(),
                 ulk_prefixes.len() as i64,
             )
             .ensure()
-        }
+        };
 
         Error::new_uplink(accres.error).map_or(Ok(Grant { inner: accres }), |err| {
             drop_uplink_sys_access_result(accres);
             Err(err)
         })
+    }
+
+    /// Generates a new access grant using the configuration and the specific
+    /// satellite address, API key, and passphrase.
+    /// It connects to the satellite address for getting a project-based salt
+    /// for deterministic key derivation.
+    ///
+    /// NOTE: this is a CPU-heavy operation that uses a password-based key
+    /// derivation (Argon2). It should be a setup-only step. Most common
+    /// interactions with the library should be using a serialized access grant
+    /// through [`Grant::new()`](../access/struct.Grant.html#.method.new).
+    pub(crate) fn request_access_with_config_and_passphrase(
+        config: &Config,
+        satellite_addr: &str,
+        api_key: &str,
+        passphrase: &str,
+    ) -> Result<Self> {
+        let satellite_addr = helpers::cstring_from_str_fn_arg("satellite_addr", satellite_addr)?;
+        let api_key = helpers::cstring_from_str_fn_arg("api_key", api_key)?;
+        let passphrase = helpers::cstring_from_str_fn_arg("passphrase", passphrase)?;
+
+        // SAFETY: we trust that the underlying c-binding is safe, nonetheless
+        // we ensure accres is correct through the ensure method of the
+        // implemented Ensurer trait.
+        let accres = unsafe {
+            *ulksys::uplink_config_request_access_with_passphrase(
+                config.as_uplink_c(),
+                satellite_addr.as_ptr() as *mut c_char,
+                api_key.as_ptr() as *mut c_char,
+                passphrase.as_ptr() as *mut c_char,
+            )
+            .ensure()
+        };
+
+        if let Some(e) = Error::new_uplink(accres.error) {
+            drop_uplink_sys_access_result(accres);
+            Err(e)
+        } else {
+            Ok(Grant {
+                inner: ulksys::UplinkAccessResult {
+                    access: accres.access,
+                    error: ptr::null_mut(),
+                },
+            })
+        }
     }
 }
 
@@ -475,6 +514,7 @@ mod test {
     use super::*;
     use crate::error;
 
+    /*** Grant tests ***/
     #[test]
     fn test_grant_new_invalid_param() {
         if let Error::InvalidArguments(error::Args { names, msg }) = Grant::new("serialized\0")
@@ -491,7 +531,7 @@ mod test {
     }
 
     #[test]
-    fn test_grant_new_access_with_passphrase_invalid_params() {
+    fn test_grant_request_access_with_passphrase_invalid_params() {
         {
             // Invalid satelite address.
             if let Error::InvalidArguments(error::Args { names, msg }) =
@@ -529,6 +569,80 @@ mod test {
             if let Error::InvalidArguments(error::Args { names, msg }) =
                 Grant::request_access_with_passphrase("localhost", "some-key", "pass\0")
                     .expect_err("when passing an passphrase with NULL bytes")
+            {
+                assert_eq!(names, "passphrase", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot contains null bytes (0 byte). Null byte found at 4",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
+    }
+
+    #[test]
+    fn test_grant_request_access_with_config_and_passphrase_invalid_params() {
+        {
+            // Invalid satelite address.
+            let config = Config::new("rust-bindings", Duration::new(1, 0), None)
+                .expect("new shouldn't fail when 'user agent' doesn't contain ny nul character");
+
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                Grant::request_access_with_config_and_passphrase(
+                    &config,
+                    "localh\0st",
+                    "some-key",
+                    "pass",
+                )
+                .expect_err("when passing an satellite address with NULL bytes")
+            {
+                assert_eq!(names, "satellite_addr", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot contains null bytes (0 byte). Null byte found at 6",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
+
+        {
+            // Invalid API Key.
+            let config = Config::new("rust-bindings", Duration::new(1, 0), None)
+                .expect("new shouldn't fail when 'user agent' doesn't contain ny nul character");
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                Grant::request_access_with_config_and_passphrase(
+                    &config,
+                    "localhost",
+                    "s\0me-key",
+                    "pass",
+                )
+                .expect_err("when passing an API key with NULL bytes")
+            {
+                assert_eq!(names, "api_key", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot contains null bytes (0 byte). Null byte found at 1",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
+
+        {
+            // Invalid passphrase.
+            let config = Config::new("rust-bindings", Duration::new(1, 0), None)
+                .expect("new shouldn't fail when 'user agent' doesn't contain ny nul character");
+
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                Grant::request_access_with_config_and_passphrase(
+                    &config,
+                    "localhost",
+                    "some-key",
+                    "pass\0",
+                )
+                .expect_err("when passing a passphrase with NULL bytes")
             {
                 assert_eq!(names, "passphrase", "invalid error argument name");
                 assert_eq!(
@@ -583,6 +697,7 @@ mod test {
         */
     }
 
+    /*** SharePrefix tests ***/
     #[test]
     fn test_share_prefix() {
         {
@@ -642,6 +757,7 @@ mod test {
         }
     }
 
+    /*** Permission tests ***/
     #[test]
     fn test_permission_default() {
         let perm = Permission::new();
@@ -760,16 +876,14 @@ mod test {
         }
     }
 
-    // Test Ensurer implementaitons
-    use std::ptr::null_mut;
-
+    /*** Ensurer implementations tests ***/
     #[test]
     fn test_ensurer_ulksys_access_result_valid() {
         {
             // Has an access.
             let acc_res = ulksys::UplinkAccessResult {
                 access: &mut ulksys::UplinkAccess { _handle: 0 },
-                error: null_mut::<ulksys::UplinkError>(),
+                error: ptr::null_mut::<ulksys::UplinkError>(),
             };
 
             acc_res.ensure();
@@ -778,10 +892,10 @@ mod test {
         {
             // Has an error.
             let acc_res = ulksys::UplinkAccessResult {
-                access: null_mut::<ulksys::UplinkAccess>(),
+                access: ptr::null_mut::<ulksys::UplinkAccess>(),
                 error: &mut ulksys::UplinkError {
                     code: 0,
-                    message: null_mut(),
+                    message: ptr::null_mut(),
                 },
             };
 
@@ -795,8 +909,8 @@ mod test {
     )]
     fn test_ensurer_ulksys_access_result_invalid_both_null() {
         let acc_res = ulksys::UplinkAccessResult {
-            access: null_mut::<ulksys::UplinkAccess>(),
-            error: null_mut::<ulksys::UplinkError>(),
+            access: ptr::null_mut::<ulksys::UplinkAccess>(),
+            error: ptr::null_mut::<ulksys::UplinkError>(),
         };
 
         acc_res.ensure();
@@ -811,7 +925,7 @@ mod test {
             access: &mut ulksys::UplinkAccess { _handle: 0 },
             error: &mut ulksys::UplinkError {
                 code: 0,
-                message: null_mut(),
+                message: ptr::null_mut(),
             },
         };
 
@@ -824,7 +938,7 @@ mod test {
             // Has a string.
             let str_res = ulksys::UplinkStringResult {
                 string: CString::new("whatever").unwrap().into_raw(),
-                error: null_mut::<ulksys::UplinkError>(),
+                error: ptr::null_mut::<ulksys::UplinkError>(),
             };
 
             str_res.ensure();
@@ -833,10 +947,10 @@ mod test {
         {
             // Has an error.
             let str_res = ulksys::UplinkStringResult {
-                string: null_mut(),
+                string: ptr::null_mut(),
                 error: &mut ulksys::UplinkError {
                     code: 0,
-                    message: null_mut(),
+                    message: ptr::null_mut(),
                 },
             };
 
@@ -850,8 +964,8 @@ mod test {
     )]
     fn test_ensurer_ulksys_string_result_invalid_both_null() {
         let str_res = ulksys::UplinkStringResult {
-            string: null_mut(),
-            error: null_mut::<ulksys::UplinkError>(),
+            string: ptr::null_mut(),
+            error: ptr::null_mut::<ulksys::UplinkError>(),
         };
 
         str_res.ensure();
@@ -866,7 +980,7 @@ mod test {
             string: CString::new("whatever").unwrap().into_raw(),
             error: &mut ulksys::UplinkError {
                 code: 0,
-                message: null_mut(),
+                message: ptr::null_mut(),
             },
         };
 
