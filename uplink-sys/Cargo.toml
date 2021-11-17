@@ -2,15 +2,13 @@
 name = "uplink-sys"
 version = "0.1.1"
 authors = ["Cameron Fyfe <cameron.j.fyfe@gmail.com>", "utropicmedia"]
-edition = "2018"
-link = "uplink"
+edition = "2021"
+links = "uplink"
 description = "Unsafe rust bindings for libuplink - the storj protocol library."
 readme = "README.md"
 license = "Apache-2.0"
 repository = "https://github.com/storj-thirdparty/uplink-rust"
 keywords = ["storj", "storage"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
 bindgen = "0.58.1"
