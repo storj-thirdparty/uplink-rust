@@ -1,6 +1,6 @@
 [package]
 name = "uplink-sys"
-version = "0.1.1"
+version = "0.2.1"
 authors = ["Cameron Fyfe <cameron.j.fyfe@gmail.com>", "utropicmedia"]
 edition = "2021"
 links = "uplink"
@@ -9,6 +9,10 @@ readme = "README.md"
 license = "Apache-2.0"
 repository = "https://github.com/storj-thirdparty/uplink-rust"
 keywords = ["storj", "storage"]
+
+# Contains relevant information of the Uplink c-binding.
+[package.metadata.uplink-c]
+version = "1.5.0" # keep it manually in sync with the git-submodule uplink-c checkout version tag.
 
 [build-dependencies]
 bindgen = "0.59.1"
