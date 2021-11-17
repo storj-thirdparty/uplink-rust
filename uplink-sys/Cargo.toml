@@ -11,6 +11,6 @@ repository = "https://github.com/storj-thirdparty/uplink-rust"
 keywords = ["storj", "storage"]
 
 [build-dependencies]
-bindgen = "0.58.1"
+bindgen = "0.59.1"
 
 [dependencies]
