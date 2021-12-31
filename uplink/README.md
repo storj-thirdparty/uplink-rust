@@ -34,7 +34,6 @@ General entities:
 - [ ] [Part](https://pkg.go.dev/storj.io/uplink#Part)
 - [ ] [Part Iterator](https://pkg.go.dev/storj.io/uplink#PartIterator)
 - [ ] [Part Upload](https://pkg.go.dev/storj.io/uplink#PartUpload)
-- [ ] [Permission](https://pkg.go.dev/storj.io/uplink#Permission)
 - [X] [Permission](https://pkg.go.dev/storj.io/uplink#Permission)
 - [ ] [Project](https://pkg.go.dev/storj.io/uplink#Project)
 - [X] [Share Prefix](https://pkg.go.dev/storj.io/uplink#SharePrefix)
