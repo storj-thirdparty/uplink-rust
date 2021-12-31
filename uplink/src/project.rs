@@ -3,6 +3,8 @@
 use crate::access::Grant;
 use crate::config::Config;
 
+pub mod options;
+
 /// TODO: document it.
 pub struct Project {}
 

@@ -6,15 +6,14 @@ pub(crate) mod config;
 pub(crate) mod encryption_key;
 pub(crate) mod error;
 pub(crate) mod helpers;
-pub(crate) mod project;
 
 pub mod access;
 pub mod bucket;
 pub mod metadata;
+pub mod project;
 pub use config::Config;
 pub use encryption_key::EncryptionKey;
 pub use error::Error;
-pub use project::Project;
 
 /// A specialized [`Result`](https://doc.rust-lang.org/std/result/enum.Result.html)
 /// type for Storj Uplink operations.
