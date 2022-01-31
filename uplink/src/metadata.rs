@@ -176,7 +176,7 @@ impl UplinkCustomMetadataWrapper {
     fn from_custom(custom: &Custom) -> Self {
         let num_entries = custom.count();
         if num_entries == 0 {
-            return Self::default();
+            return Default::default();
         }
 
         let mut entries = Vec::with_capacity(num_entries);
