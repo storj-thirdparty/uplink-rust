@@ -154,7 +154,7 @@ impl fmt::Display for Args {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
-            "{} argurments have invalid values. {}",
+            "{} arguments have invalid values. {}",
             self.names, self.msg
         )
     }
