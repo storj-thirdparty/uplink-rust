@@ -457,20 +457,20 @@ impl Permission {
 
 impl Ensurer for ulksys::UplinkAccessResult {
     fn ensure(&self) -> &Self {
-        assert!(!self.access.is_null() || !self.error.is_null(), "invalid underlying c-binding returned an invalid UplinkAccessResult; access and error fields are both NULL");
+        assert!(!self.access.is_null() || !self.error.is_null(), "underlying c-binding returned an invalid UplinkAccessResult; access and error fields are both NULL");
         assert!((self.access.is_null() && !self.error.is_null())
             || (!self.access.is_null() && self.error.is_null()),
-            "invalid underlying c-binding returned an invalid UplinkAccessResult; access and error fields are both NOT NULL");
+            "underlying c-binding returned an invalid UplinkAccessResult; access and error fields are both NOT NULL");
         self
     }
 }
 
 impl Ensurer for ulksys::UplinkStringResult {
     fn ensure(&self) -> &Self {
-        assert!(!self.string.is_null() || !self.error.is_null(), "invalid underlying c-binding returned an invalid UplinkStringResult; string and error fields are both NULL");
+        assert!(!self.string.is_null() || !self.error.is_null(), "underlying c-binding returned an invalid UplinkStringResult; string and error fields are both NULL");
         assert!((self.string.is_null() && !self.error.is_null())
             || (!self.string.is_null() && self.error.is_null())
-            , "invalid underlying c-binding returned an invalid UplinkStringResult; string and error fields are both NOT NULL");
+            , "underlying c-binding returned an invalid UplinkStringResult; string and error fields are both NOT NULL");
         self
     }
 }
@@ -905,7 +905,7 @@ mod test {
 
     #[test]
     #[should_panic(
-        expected = "invalid underlying c-binding returned an invalid UplinkAccessResult; access and error fields are both NULL"
+        expected = "underlying c-binding returned an invalid UplinkAccessResult; access and error fields are both NULL"
     )]
     fn test_ensurer_ulksys_access_result_invalid_both_null() {
         let acc_res = ulksys::UplinkAccessResult {
@@ -918,7 +918,7 @@ mod test {
 
     #[test]
     #[should_panic(
-        expected = "invalid underlying c-binding returned an invalid UplinkAccessResult; access and error fields are both NOT NULL"
+        expected = "underlying c-binding returned an invalid UplinkAccessResult; access and error fields are both NOT NULL"
     )]
     fn test_ensurer_ulksys_access_result_invalid_both_not_null() {
         let acc_res = ulksys::UplinkAccessResult {
@@ -960,7 +960,7 @@ mod test {
 
     #[test]
     #[should_panic(
-        expected = "invalid underlying c-binding returned an invalid UplinkStringResult; string and error fields are both NULL"
+        expected = "underlying c-binding returned an invalid UplinkStringResult; string and error fields are both NULL"
     )]
     fn test_ensurer_ulksys_string_result_invalid_both_null() {
         let str_res = ulksys::UplinkStringResult {
@@ -973,7 +973,7 @@ mod test {
 
     #[test]
     #[should_panic(
-        expected = "invalid underlying c-binding returned an invalid UplinkStringResult; string and error fields are both NOT NULL"
+        expected = "underlying c-binding returned an invalid UplinkStringResult; string and error fields are both NOT NULL"
     )]
     fn test_ensurer_ulksys_string_result_invalid_both_not_null() {
         let str_res = ulksys::UplinkStringResult {

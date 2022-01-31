@@ -55,10 +55,10 @@ impl EncryptionKey {
 
 impl Ensurer for ulksys::UplinkEncryptionKeyResult {
     fn ensure(&self) -> &Self {
-        assert!(!self.encryption_key.is_null() || !self.error.is_null(), "invalid underlying c-binding returned an invalid UplinkEncryptionKeyResult; encryption_key and error fields are both NULL");
+        assert!(!self.encryption_key.is_null() || !self.error.is_null(), "underlying c-binding returned an invalid UplinkEncryptionKeyResult; encryption_key and error fields are both NULL");
         assert!((self.encryption_key.is_null() && !self.error.is_null())
             || (!self.encryption_key.is_null() && self.error.is_null()),
-            "invalid underlying c-binding returned an invalid UplinkEncryptionKeyResult; encryption_key and error fields are both NOT NULL");
+            "underlying c-binding returned an invalid UplinkEncryptionKeyResult; encryption_key and error fields are both NOT NULL");
         self
     }
 }
@@ -115,7 +115,7 @@ mod test {
 
     #[test]
     #[should_panic(
-        expected = "invalid underlying c-binding returned an invalid UplinkEncryptionKeyResult; encryption_key and error fields are both NULL"
+        expected = "underlying c-binding returned an invalid UplinkEncryptionKeyResult; encryption_key and error fields are both NULL"
     )]
     fn test_ensurer_ulksys_access_result_invalid_both_null() {
         let enckey_res = ulksys::UplinkEncryptionKeyResult {
@@ -128,7 +128,7 @@ mod test {
 
     #[test]
     #[should_panic(
-        expected = "invalid underlying c-binding returned an invalid UplinkEncryptionKeyResult; encryption_key and error fields are both NOT NULL"
+        expected = "underlying c-binding returned an invalid UplinkEncryptionKeyResult; encryption_key and error fields are both NOT NULL"
     )]
     fn test_ensurer_ulksys_access_result_invalid_both_not_null() {
         // Has an encryption key.

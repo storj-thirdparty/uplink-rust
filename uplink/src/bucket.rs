@@ -124,7 +124,7 @@ impl Ensurer for ulksys::UplinkBucket {
     fn ensure(&self) -> &Self {
         assert!(
             !self.name.is_null(),
-            "invalid underlying c-binding returned invalid UplinkBucket; name field is NULL"
+            "underlying c-binding returned invalid UplinkBucket; name field is NULL"
         );
         self
     }
