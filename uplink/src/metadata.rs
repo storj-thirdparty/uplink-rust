@@ -232,6 +232,34 @@ pub struct System {
     pub content_length: i64,
 }
 
+impl System {
+    /// Create a new instance from its underlying-c binding representation.
+    ///
+    /// The function doesn't check `created` nor `expires` have correct values.
+    /// For example if they are negatie or `expires` is less than `created`. Nonetheless because
+    /// Rust `std::time::Duration` types don't support negative values, if any of them contians a
+    /// negative or zero, `created` is set to zero duration and `expires` to `None`.
+    pub fn from_uplink_c(uc_system: &ulksys::UplinkSystemMetadata) -> Self {
+        let created = if uc_system.created > 0 {
+            Duration::from_secs(uc_system.created as u64)
+        } else {
+            Duration::ZERO
+        };
+
+        let expires = if uc_system.expires > 0 {
+            Some(Duration::from_secs(uc_system.expires as u64))
+        } else {
+            None
+        };
+
+        Self {
+            created,
+            expires,
+            content_length: uc_system.content_length,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -458,6 +486,214 @@ mod test {
             let entry = *c_entries;
             assert_c_string(entry.key, key2);
             assert_c_string(entry.value, val2);
+        }
+    }
+
+    #[test]
+    fn test_system_from_uplink_c() {
+        {
+            // 0 expiration
+            let uc_sysm = ulksys::UplinkSystemMetadata {
+                created: 3600,
+                expires: 0,
+                content_length: 10,
+            };
+
+            let sysm = System::from_uplink_c(&uc_sysm);
+            assert_eq!(
+                sysm.created,
+                Duration::from_secs(uc_sysm.created as u64),
+                "positive created"
+            );
+            assert_eq!(sysm.expires, None, "zero expires");
+            assert_eq!(
+                sysm.content_length, uc_sysm.content_length,
+                "positive content length"
+            );
+        }
+
+        {
+            // postive correct expiration
+            let uc_sysm = ulksys::UplinkSystemMetadata {
+                created: 3600,
+                expires: 3601,
+                content_length: 10,
+            };
+
+            let sysm = System::from_uplink_c(&uc_sysm);
+            assert_eq!(
+                sysm.created,
+                Duration::from_secs(uc_sysm.created as u64),
+                "positive created"
+            );
+            assert_eq!(
+                sysm.expires,
+                Some(Duration::from_secs(uc_sysm.expires as u64)),
+                "positive expires"
+            );
+            assert_eq!(
+                sysm.content_length, uc_sysm.content_length,
+                "positive content length"
+            );
+        }
+
+        {
+            // postive incorrect expiration (it's before created)
+            let uc_sysm = ulksys::UplinkSystemMetadata {
+                created: 3600,
+                expires: 100,
+                content_length: 10,
+            };
+
+            let sysm = System::from_uplink_c(&uc_sysm);
+            assert_eq!(
+                sysm.created,
+                Duration::from_secs(uc_sysm.created as u64),
+                "positive created"
+            );
+            assert_eq!(
+                sysm.expires,
+                Some(Duration::from_secs(uc_sysm.expires as u64)),
+                "positive expires before created"
+            );
+            assert_eq!(
+                sysm.content_length, uc_sysm.content_length,
+                "positive content length"
+            );
+        }
+
+        {
+            // 0 content length
+            let uc_sysm = ulksys::UplinkSystemMetadata {
+                created: 3600,
+                expires: 9999,
+                content_length: 0,
+            };
+
+            let sysm = System::from_uplink_c(&uc_sysm);
+            assert_eq!(
+                sysm.created,
+                Duration::from_secs(uc_sysm.created as u64),
+                "positive created"
+            );
+            assert_eq!(
+                sysm.expires,
+                Some(Duration::from_secs(uc_sysm.expires as u64)),
+                "positive expires"
+            );
+            assert_eq!(
+                sysm.content_length, uc_sysm.content_length,
+                "zero content length"
+            );
+        }
+
+        {
+            // negative content length
+            let uc_sysm = ulksys::UplinkSystemMetadata {
+                created: 3600,
+                expires: 9999,
+                content_length: -3,
+            };
+
+            let sysm = System::from_uplink_c(&uc_sysm);
+            assert_eq!(
+                sysm.created,
+                Duration::from_secs(uc_sysm.created as u64),
+                "positive created"
+            );
+            assert_eq!(
+                sysm.expires,
+                Some(Duration::from_secs(uc_sysm.expires as u64)),
+                "positive expires"
+            );
+            assert_eq!(
+                sysm.content_length, uc_sysm.content_length,
+                "negative content length"
+            );
+        }
+
+        {
+            // negative created
+            let uc_sysm = ulksys::UplinkSystemMetadata {
+                created: -1,
+                expires: 9999,
+                content_length: 99,
+            };
+
+            let sysm = System::from_uplink_c(&uc_sysm);
+            assert_eq!(sysm.created, Duration::ZERO, "negative created");
+            assert_eq!(
+                sysm.expires,
+                Some(Duration::from_secs(uc_sysm.expires as u64)),
+                "positive expires"
+            );
+            assert_eq!(
+                sysm.content_length, uc_sysm.content_length,
+                "positive content length"
+            );
+        }
+
+        {
+            // 0 created
+            let uc_sysm = ulksys::UplinkSystemMetadata {
+                created: 0,
+                expires: 75,
+                content_length: 99,
+            };
+
+            let sysm = System::from_uplink_c(&uc_sysm);
+            assert_eq!(sysm.created, Duration::ZERO, "zero created");
+            assert_eq!(
+                sysm.expires,
+                Some(Duration::from_secs(uc_sysm.expires as u64)),
+                "positive expires"
+            );
+            assert_eq!(
+                sysm.content_length, uc_sysm.content_length,
+                "positive content length"
+            );
+        }
+
+        {
+            // 0 expiration
+            let uc_sysm = ulksys::UplinkSystemMetadata {
+                created: 876543,
+                expires: 0,
+                content_length: 99,
+            };
+
+            let sysm = System::from_uplink_c(&uc_sysm);
+            assert_eq!(
+                sysm.created,
+                Duration::from_secs(uc_sysm.created as u64),
+                "positive created"
+            );
+            assert_eq!(sysm.expires, None, "zero expires");
+            assert_eq!(
+                sysm.content_length, uc_sysm.content_length,
+                "positive content length"
+            );
+        }
+
+        {
+            // negative expiration
+            let uc_sysm = ulksys::UplinkSystemMetadata {
+                created: 876543,
+                expires: -1,
+                content_length: 99,
+            };
+
+            let sysm = System::from_uplink_c(&uc_sysm);
+            assert_eq!(
+                sysm.created,
+                Duration::from_secs(uc_sysm.created as u64),
+                "positive created"
+            );
+            assert_eq!(sysm.expires, None, "negateve expires");
+            assert_eq!(
+                sysm.content_length, uc_sysm.content_length,
+                "positive content length"
+            );
         }
     }
 }

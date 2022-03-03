@@ -10,6 +10,7 @@ pub(crate) mod helpers;
 pub mod access;
 pub mod bucket;
 pub mod metadata;
+pub mod object;
 pub mod project;
 pub use config::Config;
 pub use encryption_key::EncryptionKey;
