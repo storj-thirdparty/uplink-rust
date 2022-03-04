@@ -13,19 +13,17 @@ use uplink_sys as ulksys;
 
 /// Represents an access grant
 ///
-/// An access grant contains everything to access a project and specific
-/// buckets.
+/// An access grant contains everything to access a project and specific buckets.
 ///
-/// It includes a potentially-restricted API Key, a potentially-restricted set
-/// of encryption information, and information about the Satellite responsible
-/// for the project's metadata.
+/// It includes a potentially-restricted API Key, a potentially-restricted set of encryption
+/// information, and information about the Satellite responsible for the project's metadata.
 #[derive(Debug)]
 pub struct Grant {
-    /// The access type of the underlying c-bindings Rust crate that an instance
-    /// of this struct represents and guard its life time until this instance
-    /// drops.
-    /// It's an access result because it's the one that holds the access grant
-    /// and allows to free its memory.
+    /// The access type of the underlying c-bindings than an instance of this struct represents and
+    /// guards its life time until this instance drops.
+    ///
+    /// It's an access result because it's the one that holds the access grant and allows to free
+    /// its memory.
     inner: ulksys::UplinkAccessResult,
 }
 
@@ -34,9 +32,8 @@ impl Grant {
     pub fn new(serialized_access: &str) -> Result<Self> {
         let saccess = helpers::cstring_from_str_fn_arg("serialized_access", serialized_access)?;
 
-        // SAFETY: we trust that the underlying c-binding is safe, nonetheless
-        // we ensure accres is correct through the ensure method of the
-        // implemented Ensurer trait.
+        // SAFETY: we trust that the underlying c-binding is safe, nonetheless we ensure `accres` is
+        // correct through the ensure method of the implemented Ensurer trait.
         let accres =
             unsafe { *ulksys::uplink_parse_access(saccess.as_ptr() as *mut c_char).ensure() };
 
@@ -48,8 +45,8 @@ impl Grant {
         }
     }
 
-    /// Generates a new access grant using a passphrase requesting to the
-    /// satellite a project-based salt for deterministic key derivation.
+    /// Generates a new access grant using a passphrase requesting to the satellite a project-based
+    /// salt for deterministic key derivation.
     pub fn request_access_with_passphrase(
         satellite_addr: &str,
         api_key: &str,
@@ -59,9 +56,8 @@ impl Grant {
         let api_key = helpers::cstring_from_str_fn_arg("api_key", api_key)?;
         let passphrase = helpers::cstring_from_str_fn_arg("passphrase", passphrase)?;
 
-        // SAFETY: we trust that the underlying c-binding is safe, nonetheless
-        // we ensure accres is correct through the ensure method of the
-        // implemented Ensurer trait.
+        // SAFETY: we trust that the underlying c-binding is safe, nonetheless we ensure `accres`
+        // is correct through the ensure method of the implemented Ensurer trait.
         let accres = unsafe {
             *ulksys::uplink_request_access_with_passphrase(
                 satellite_addr.as_ptr() as *mut c_char,
@@ -77,10 +73,10 @@ impl Grant {
         })
     }
 
-    /// Overrides the root encryption key for the prefix in bucket with the
-    /// encryption key.
-    /// This method is useful for overriding the encryption key in user-specific
-    /// access grants when implementing multitenancy in a single app bucket.
+    /// Overrides the root encryption key for the prefix in bucket with the encryption key.
+    ///
+    /// This method is useful for overriding the encryption key in user-specific access grants when
+    /// implementing multitenancy in a single app bucket.
     /// See relevant information in the general crate documentation.
     pub fn override_encryption_key(
         &self,
@@ -109,9 +105,8 @@ impl Grant {
 
     /// Returns the satellite node URL associated with this access grant.
     pub fn satellite_address(&self) -> Result<&str> {
-        // SAFETY: we trust that the underlying c-binding is safe, nonetheless
-        // we ensure strres is correct through the ensure method of the
-        // implemented Ensurer trait.
+        // SAFETY: we trust that the underlying c-binding is safe, nonetheless we ensure `strres` is
+        // correct through the ensure method of the implemented Ensurer trait.
         let strres =
             unsafe { *ulksys::uplink_access_satellite_address(self.inner.access).ensure() };
 
@@ -121,8 +116,7 @@ impl Grant {
         }
 
         let address;
-        // SAFETY: at this point we have already checked that strres.string is
-        // NOT NULL.
+        // SAFETY: at this point we have already checked that `strres`.string is NOT NULL.
         unsafe {
             address = CStr::from_ptr(strres.string).to_str();
             drop_uplink_sys_string_result(strres)
@@ -131,12 +125,11 @@ impl Grant {
         Ok(address.expect("invalid underlying c-binding"))
     }
 
-    /// Serializes an access grant such that it can be used to create a
-    /// [`Self::new()`] instance of this type or parsed with other tools.
+    /// Serializes an access grant such that it can be used to create a [`Self::new()`] instance of
+    /// this type or parsed with other tools.
     pub fn serialize(&self) -> Result<&str> {
-        // SAFETY: we trust that the underlying c-binding is safe, nonetheless
-        // we ensure strres is correct through the ensure method of the
-        // implemented Ensurer trait.
+        // SAFETY: we trust that the underlying c-binding is safe, nonetheless we ensure `strres` is
+        // correct through the ensure method of the implemented Ensurer trait.
         let strres = unsafe { *ulksys::uplink_access_serialize(self.inner.access).ensure() };
 
         if let Some(e) = Error::new_uplink(strres.error) {
@@ -145,8 +138,7 @@ impl Grant {
         }
 
         let serialized;
-        // SAFETY: at this point we have already checked that strres.string is
-        // NOT NULL.
+        // SAFETY: at this point we have already checked that strres.string is NOT NULL.
         unsafe {
             serialized = CStr::from_ptr(strres.string).to_str();
             drop_uplink_sys_string_result(strres);
@@ -157,13 +149,12 @@ impl Grant {
 
     /// Creates a new access grant with specific permissions.
     ///
-    /// An access grant can only have their existing permissions restricted, and
-    /// the resulting access will only allow for the intersection of all
-    /// previous share calls in the access construction chain.
+    /// An access grant can only have their existing permissions restricted, and the resulting
+    /// access will only allow for the intersection of all previous share calls in the access
+    /// construction chain.
     ///
-    /// Prefixes restrict the access grant (and internal encryption information)
-    /// to only contain enough information to allow access to just those
-    /// prefixes.
+    /// Prefixes restrict the access grant (and internal encryption information) to only contain
+    /// enough information to allow access to just those prefixes.
     ///
     /// To revoke an access grant see [`Project.revoke_access()`](../project/struct.Project.html#method.revoke_access).
     pub fn share(&self, permission: &Permission, prefixes: Vec<SharePrefix>) -> Result<Grant> {
@@ -173,9 +164,8 @@ impl Grant {
             ulk_prefixes.push(sp.as_uplink_c())
         }
 
-        // SAFETY: we trust that the underlying c-binding is safe, nonetheless
-        // we ensure accres is correct through the ensure method of the
-        // implemented Ensurer trait.
+        // SAFETY: we trust that the underlying c-binding is safe, nonetheless we ensure `accres` is
+        // correct through the ensure method of the implemented Ensurer trait.
         let accres = unsafe {
             *ulksys::uplink_access_share(
                 self.inner.access,
@@ -192,15 +182,14 @@ impl Grant {
         })
     }
 
-    /// Generates a new access grant using the configuration and the specific
-    /// satellite address, API key, and passphrase.
-    /// It connects to the satellite address for getting a project-based salt
-    /// for deterministic key derivation.
+    /// Generates a new access grant using the configuration and the specific satellite address, API
+    /// key, and passphrase.
+    /// It connects to the satellite address for getting a project-based salt for deterministic key
+    /// derivation.
     ///
-    /// NOTE: this is a CPU-heavy operation that uses a password-based key
-    /// derivation (Argon2). It should be a setup-only step. Most common
-    /// interactions with the library should be using a serialized access grant
-    /// through [`Grant::new()`](../access/struct.Grant.html#.method.new).
+    /// NOTE: this is a CPU-heavy operation that uses a password-based key derivation (Argon2). It
+    /// should be a setup-only step. Most common interactions with the library should be using a
+    /// serialized access grant through [`Grant::new()`](../access/struct.Grant.html#.method.new).
     pub(crate) fn request_access_with_config_and_passphrase(
         config: &Config,
         satellite_addr: &str,
@@ -211,9 +200,8 @@ impl Grant {
         let api_key = helpers::cstring_from_str_fn_arg("api_key", api_key)?;
         let passphrase = helpers::cstring_from_str_fn_arg("passphrase", passphrase)?;
 
-        // SAFETY: we trust that the underlying c-binding is safe, nonetheless
-        // we ensure accres is correct through the ensure method of the
-        // implemented Ensurer trait.
+        // SAFETY: we trust that the underlying c-binding is safe, nonetheless we ensure `accres` is
+        // correct through the ensure method of the implemented Ensurer trait.
         let accres = unsafe {
             *ulksys::uplink_config_request_access_with_passphrase(
                 config.as_uplink_c(),
@@ -255,8 +243,7 @@ pub struct SharePrefix<'a> {
 
 impl<'a> SharePrefix<'a> {
     /// Create a new prefix to be shared in the specified bucket.
-    /// It returns an error if bucket or prefix contains a null character
-    /// (0 byte).
+    /// It returns an error if bucket or prefix contains a null character (0 byte).
     pub fn new(bucket: &'a str, prefix: &'a str) -> Result<Self> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
         let c_prefix = helpers::cstring_from_str_fn_arg("prefix", prefix)?;
@@ -279,10 +266,9 @@ impl<'a> SharePrefix<'a> {
         self.prefix
     }
 
-    /// Returns an UplinkSharePrefix with the values of this SharedPrefix for
-    /// interoperating with the uplink c-bindings.
-    /// The pointer fields of the returned struct will be valid as long as
-    /// `self` is.
+    /// Returns an `UplinkSharePrefix` with the values of this `SharedPrefix` for interoperating
+    /// with the uplink c-bindings. The pointer fields of the returned struct will be valid as long
+    /// as `self` is.
     fn as_uplink_c(&self) -> ulksys::UplinkSharePrefix {
         ulksys::UplinkSharePrefix {
             bucket: self.c_bucket.as_ptr(),
@@ -291,59 +277,56 @@ impl<'a> SharePrefix<'a> {
     }
 }
 
-/// Defines what actions and an optional specific period of time are granted to
-/// a shared access grant.
-/// A shared access grant can never has more permission that its parent, hence
-/// even some allowed permission is set for the shared access Grant but not to
-/// its parent, the shared access Grant won't be allowed.
-/// shared access Grant wont
-/// See [`Grant.share()`](struct.Grant.html#method.share).
+/// Defines what actions and an optional specific period of time are granted to a shared access
+/// grant.
+///
+/// A shared access grant can never has more permission that its parent, hence even some allowed
+/// permission is set for the shared access Grant but not to its parent, the shared access Grant
+/// won't be allowed. shared access Grant wont See
+/// [`Grant.share()`](struct.Grant.html#method.share).
 #[derive(Default)]
 pub struct Permission {
-    /// Gives permission to download the content of the objects and their
-    /// associated metadata, but it does not allow listing buckets.
+    /// Gives permission to download the content of the objects and their associated metadata, but
+    /// it does not allow listing buckets.
     pub allow_download: bool,
-    /// Gives permission to create buckets and upload new objects. It does not
-    /// allow overwriting existing objects unless allow_delete is granted too.
+    /// Gives permission to create buckets and upload new objects. It does not allow overwriting
+    /// existing objects unless allow_delete is granted too.
     pub allow_upload: bool,
-    /// Gives permission to list buckets and getting the metadata of the
-    /// objects. It does not allow downloading the content of the objects.
+    /// Gives permission to list buckets and getting the metadata of the objects. It does not allow
+    /// downloading the content of the objects.
     pub allow_list: bool,
-    /// Gives permission to delete buckets and objects. Unless either allow
-    /// allow_download or allow_list is grated too, neither the metadata of the
-    /// objects nor error information will be returned for deleted objects.
+    /// Gives permission to delete buckets and objects. Unless either allow `allow_download` or
+    /// `allow_list` is grated too, neither the metadata of the objects nor error information will
+    /// be returned for deleted objects.
     pub allow_delete: bool,
-    /// Restricts when the resulting access grant is valid for. If it is set
-    /// then it must always be before not_after and the resulting access grant
-    /// will not work if the satellite believes the time is before the set it
-    /// one.
-    /// The time is measured with the number of seconds since the Unix Epoch
-    /// time.
+    /// Restricts when the resulting access grant is valid for. If it is set then it must always be
+    /// before not_after and the resulting access grant will not work if the satellite believes the
+    /// time is before the set it  one.
+    ///
+    /// The time is measured with the number of seconds since the Unix Epoch time.
     not_before: Option<Duration>,
-    /// Restricts when the resulting access grant is valid for. If it is set
-    /// then it must always be after not_before and the resulting access grant
-    /// will not work if the satellite believes the time is after the set it
-    /// one.
+    /// Restricts when the resulting access grant is valid for. If it is set then it must always be
+    /// after not_before and the resulting access grant will not work if the satellite believes the
+    /// time is after the set it one.
+    ///
     /// The time is measured with the number of seconds since the Unix Epoch
     /// time.
     not_after: Option<Duration>,
 }
 
 impl Permission {
-    /// Creates a permission that doesn't allow any operation, which is the
-    /// default permission.
-    /// This constructor is useful for creating a permission for after setting
-    /// the specific allowed operations when none of the other constructors
-    /// creates a permission with a set of allowed operations that works for
-    /// your use case.
+    /// Creates a permission that doesn't allow any operation, which is the default permission.
+    /// This constructor is useful for creating a permission for after setting the specific allowed
+    /// operations when none of the other constructors creates a permission with a set of allowed
+    /// operations that works for your use case.
     pub fn new() -> Permission {
         Permission {
             ..Default::default()
         }
     }
 
-    /// Creates a permission that allows all the operations (i.e. Downloading,
-    /// uploading, listing and deleting).
+    /// Creates a permission that allows all the operations (i.e. Downloading, uploading, listing
+    /// and deleting).
     pub fn full() -> Permission {
         Permission {
             allow_download: true,
@@ -355,8 +338,7 @@ impl Permission {
         }
     }
 
-    /// Creates a permission that allows for reading (i.e. Downloading) and
-    /// listing.
+    /// Creates a permission that allows for reading (i.e. Downloading) and  listing.
     pub fn read_only() -> Permission {
         Permission {
             allow_download: true,
@@ -368,8 +350,7 @@ impl Permission {
         }
     }
 
-    /// Creates a permission that allows for writing (i.e. Uploading) and
-    /// deleting.
+    /// Creates a permission that allows for writing (i.e. Uploading) and deleting.
     pub fn write_only() -> Permission {
         Permission {
             allow_download: false,
@@ -381,19 +362,16 @@ impl Permission {
         }
     }
 
-    /// Returns the duration from Unix Epoch time since this permission is
-    /// valid.
-    /// Return None when there is not before restriction.
+    /// Returns the duration from Unix Epoch time since this permission is valid.
+    /// Return `None` when there is not before restriction.
     pub fn not_before(&self) -> Option<Duration> {
         self.not_before
     }
 
-    /// Sets a not before valid time for this permission or removing it when
-    /// None is passed.
-    /// An error is returned if since is more recent or equal to the current
-    /// not after valid time of the permission, when not after is set.
-    /// The time is measured with the number of seconds since the Unix Epoch
-    /// time.
+    /// Sets a not before valid time for this permission or removing it when `None` is passed.
+    /// An error is returned if since is more recent or equal to the current not after valid time of
+    /// the permission, when not after is set. The time is measured with the number of seconds since
+    /// the Unix Epoch time.
     pub fn set_not_before(&mut self, since: Option<Duration>) -> Result<()> {
         if let Some(since) = since {
             if let Some(until) = self.not_after {
@@ -411,19 +389,18 @@ impl Permission {
         Ok(())
     }
 
-    /// Returns the duration from Unix Epoch time until this permission is
-    /// valid.
-    /// Return None when there is not after restriction.
+    /// Returns the duration from Unix Epoch time until this permission is valid.
+    /// Return `None` when there is not after restriction.
     pub fn not_after(&self) -> Option<Duration> {
         self.not_after
     }
 
-    /// Sets a not after valid time for this permission or removing it when None
-    /// is passed.
-    /// An error is returned if until is previous or equal to the current
-    /// not before valid time of the permission, when not before is set.
-    /// The time is measured with the number of seconds since the Unix Epoch
-    /// time.
+    /// Sets a not after valid time for this permission or removing it when `None` is passed.
+    ///
+    /// An error is returned if until is previous or equal to the current not before valid time of
+    /// the permission, when not before is set.
+    ///
+    /// The time is measured with the number of seconds since the Unix Epoch time.
     pub fn set_not_after(&mut self, until: Option<Duration>) -> Result<()> {
         if let Some(until) = until {
             if let Some(since) = self.not_before {
@@ -441,8 +418,8 @@ impl Permission {
         Ok(())
     }
 
-    /// Returns an UplinkPermission with the values of this Permission for
-    /// interoperating with the uplink c-bindings.
+    /// Returns an UplinkPermission with the values of this Permission for interoperating with the
+    /// uplink c-bindings.
     fn to_uplink_c(&self) -> ulksys::UplinkPermission {
         ulksys::UplinkPermission {
             allow_download: self.allow_download,
@@ -475,8 +452,8 @@ impl Ensurer for ulksys::UplinkStringResult {
     }
 }
 
-/// Calls the associated `free` underlying c-bindings function for releasing
-/// the associated resources of an access result.
+/// Calls the associated `free` underlying c-bindings function for releasing the associated
+/// resources of an access result.
 fn drop_uplink_sys_access_result(accres: ulksys::UplinkAccessResult) {
     // SAFETY: we trust that the underlying c-binding is safe freeing the
     // memory of a correct UplinkAccessResult value.
@@ -485,9 +462,8 @@ fn drop_uplink_sys_access_result(accres: ulksys::UplinkAccessResult) {
     }
 }
 
-/// Calls, only if `error` is not null,  the associated `free` underlying
-/// c-bindings function for releasing the associated resources with `error` and
-/// to free the memory pointed by it.
+/// Calls, only if `error` is not null,  the associated `free` underlying c-bindings function for
+/// releasing the associated resources with `error` and to free the memory pointed by it.
 fn drop_uplink_sys_error(error: *mut ulksys::UplinkError) {
     if !error.is_null() {
         // SAFETY: We just checked that the pointer is not null and we trust
@@ -499,8 +475,8 @@ fn drop_uplink_sys_error(error: *mut ulksys::UplinkError) {
     }
 }
 
-/// Calls the associated `free` underlying c-bindings function for releasing
-/// the associated resources of a string result.
+/// Calls the associated `free` underlying c-bindings function for releasing the associated
+/// resources of a string result.
 fn drop_uplink_sys_string_result(strres: ulksys::UplinkStringResult) {
     // SAFETY: we trust that the underlying c-binding is safe freeing the
     // memory of a correct UplinkStringResult value.
