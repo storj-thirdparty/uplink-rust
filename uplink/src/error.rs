@@ -1,6 +1,7 @@
 //! Errors returned by this crate.
 
 use std::error as stderr;
+use std::ffi::CStr;
 use std::fmt;
 
 use uplink_sys as ulksys;
@@ -182,11 +183,19 @@ impl Uplink {
             return None;
         }
 
-        // SAFETY: We have checked just above that the pointer isn't null.
+        let details = unsafe { CStr::from_ptr((*ulkerr).message) };
+
+        // SAFETY: We have checked just above that the pointer isn't null and we trust the
+        // underlying c-bindings that the error contains valid C strings.
         unsafe {
             Some(Self {
                 code: (*ulkerr).code,
-                details: (*ulkerr).message.as_ref().unwrap().to_string(),
+                details: details
+                    .to_str()
+                    .expect(
+                        "invalid Uplink c-bindings error message; it contains non UTF-8 characters",
+                    )
+                    .to_string(),
             })
         }
     }

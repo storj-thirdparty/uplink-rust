@@ -74,6 +74,7 @@ impl Grant {
     }
 
     /// Overrides the root encryption key for the prefix in bucket with the encryption key.
+    /// `prefix` must end with slash (i.e. `/`), otherwise it returns an error.
     ///
     /// This method is useful for overriding the encryption key in user-specific access grants when
     /// implementing multitenancy in a single app bucket.
@@ -632,17 +633,38 @@ mod test {
     }
 
     #[test]
-    fn test_grant_override_encryption_key_invalid_params() {
-        // TODO: uncomment this test when the implementation of the
-        // EncryptionKey exists.
-        /*
-        let grant = Grant::new("serialized");
-        let enc_key = EncryptionKey::new();
+    fn test_grant_override_encryption_key() {
+        // This access grant is invalidated so it isn't leaking any valid access grant.
+        let grant = Grant::new("15kvZYL7aMhTXFU6vne8iedGfvvZdcbaDLAZ9SiN1yChpAYupdDw3SMfyHqA7pETdFjhe8SnjLox4tnq5hYbZWfCm443kv3fWV8ZWNkKwaq1mbrmyz3pPd1WSxiJn2g5tYKWoPpzvG1ygjDaB4yEq9zdpYSaH5DiVHrbaWmq6mCwRrnEF1ANdVcA2gXNbFpmSKp2i59fA14RRdZYVTrvY6rWKyG35p35eenp3ePyjwoXNSe9Cs8KvMRteVcozNiMwwuYCm4ExwP8os5Eqydqwjpx8ic8hnirkn7ThBbLLAtJBLtu").expect("valid serialized access grant");
+        let enc_key = EncryptionKey::derive("Rust test", &[0]).expect("derive encryption key");
+
+        {
+            // Valid arguments.
+            let err = grant
+                .override_encryption_key("a-bucket", "prefix/", &enc_key)
+                .expect("when passing a valid bucket and prefix");
+        }
+
+        {
+            // Invalid prefix, it doesn't ends with `/`.
+            if let Error::Uplink(error::Uplink { code, .. }) = grant
+                .override_encryption_key("a-bucket", "prefix", &enc_key)
+                .expect_err("when passing a prefix without ending with slash")
+            {
+                assert_eq!(
+                    code as u32,
+                    ulksys::UPLINK_ERROR_INTERNAL,
+                    "invalid error code"
+                );
+            } else {
+                panic!("expected an Uplink error");
+            }
+        }
 
         {
             // Invalid bucket.
             if let Error::InvalidArguments(error::Args { names, msg }) = grant
-                .override_encryption_key("\0a-bucket", "prefix", enc_key)
+                .override_encryption_key("\0a-bucket", "prefix", &enc_key)
                 .expect_err("when passing a bucket name with NULL bytes")
             {
                 assert_eq!(names, "bucket", "invalid error argument name");
@@ -658,7 +680,7 @@ mod test {
         {
             // Invalid prefix.
             if let Error::InvalidArguments(error::Args { names, msg }) = grant
-                .override_encryption_key("a-bucket", "pre\0fix", enc_key)
+                .override_encryption_key("a-bucket", "pre\0fix", &enc_key)
                 .expect_err("when passing a bucket name with NULL bytes")
             {
                 assert_eq!(names, "prefix", "invalid error argument name");
@@ -670,7 +692,6 @@ mod test {
                 panic!("expected an invalid argument error");
             }
         }
-        */
     }
 
     /*** SharePrefix tests ***/
