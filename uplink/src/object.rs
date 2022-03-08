@@ -1,5 +1,8 @@
 //! Storj DCS Object and related types.
 
+mod upload;
+pub use upload::Upload;
+
 use crate::{error::BoxError, metadata, Ensurer, Error, Result};
 
 use std::ffi::CStr;
@@ -201,6 +204,16 @@ impl Drop for Download {
     }
 }
 
+impl Ensurer for ulksys::UplinkObjectResult {
+    fn ensure(&self) -> &Self {
+        assert!(!self.object.is_null() || !self.error.is_null(), "underlying c-bindings returned an invalid UplinkObjectResult; object and error fields are both NULL");
+        assert!((self.object.is_null() && !self.error.is_null())
+            || (!self.object.is_null() && self.error.is_null())
+            , "underlying c-bindings returned an invalid UplinkObjectResult; object and error fields are both NOT NULL");
+        self
+    }
+}
+
 impl Ensurer for ulksys::UplinkDownloadResult {
     fn ensure(&self) -> &Self {
         assert!(!self.download.is_null() || !self.error.is_null(), "underlying c-bindings returned an invalid UplinkDownloadResult; download and error fields are both NULL");
@@ -218,6 +231,47 @@ mod test {
     use std::ptr;
 
     use uplink_sys as ulksys;
+
+    #[test]
+    #[should_panic(
+        expected = "underlying c-bindings returned an invalid UplinkObjectResult; object and error fields are both NULL"
+    )]
+    fn test_ensurer_uplink_object_result_invalid_both_null() {
+        let upload_res = ulksys::UplinkObjectResult {
+            object: ptr::null_mut(),
+            error: ptr::null_mut(),
+        };
+
+        upload_res.ensure();
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "underlying c-bindings returned an invalid UplinkObjectResult; object and error fields are both NOT NULL"
+    )]
+    fn test_ensurer_uplink_object_result_invalid_both_not_null() {
+        let upload_res = ulksys::UplinkObjectResult {
+            object: &mut ulksys::UplinkObject {
+                key: ptr::null_mut(),
+                is_prefix: false,
+                system: ulksys::UplinkSystemMetadata {
+                    created: 0,
+                    expires: 0,
+                    content_length: 0,
+                },
+                custom: ulksys::UplinkCustomMetadata {
+                    entries: ptr::null_mut(),
+                    count: 0,
+                },
+            },
+            error: &mut ulksys::UplinkError {
+                code: 0,
+                message: ptr::null_mut(),
+            },
+        };
+
+        upload_res.ensure();
+    }
 
     #[test]
     #[should_panic(
