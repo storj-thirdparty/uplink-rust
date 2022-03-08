@@ -21,7 +21,7 @@ General entities:
 - [X] [Commit Upload Options](https://pkg.go.dev/storj.io/uplink#CommitUploadOptions)
 - [X] [Config](https://pkg.go.dev/storj.io/uplink#Config)
 - [X] [Custom Metadata](https://pkg.go.dev/storj.io/uplink#CustomMetadata)
-- [ ] [Download](https://pkg.go.dev/storj.io/uplink#Download)
+- [X] [Download](https://pkg.go.dev/storj.io/uplink#Download)
 - [X] [Download Options](https://pkg.go.dev/storj.io/uplink#DownloadOptions)
 - [X] [Encryption Key](https://pkg.go.dev/storj.io/uplink#EncryptionKey)
 - [X] [List Buckets Options](https://pkg.go.dev/storj.io/uplink#ListBucketsOptions)

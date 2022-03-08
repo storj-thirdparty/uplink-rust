@@ -121,3 +121,130 @@ impl Drop for Iterator {
         }
     }
 }
+
+/// Represents a download object operation from Storj DCS network.
+pub struct Download {
+    /// The download type of the underlying c-bindings than an instance of this struct represents
+    /// and guards its life time until the instance drops.
+    ///
+    /// It's an access result
+    inner: ulksys::UplinkDownloadResult,
+}
+
+impl Download {
+    /// Creates a new instance from the underlying c-bindings representation. The parameter is an
+    /// `UplinkDownloadResult` because the it's the type that holds a `UplinkDownload` pointer and
+    /// the function that frees the memory requires this type.
+    ///
+    /// It returns an error if `uc_download` contains a non NULL pointer in the `error` field.
+    ///
+    /// This function panics if `uc_download` is invalid, i.e. `download` and `error` fields are
+    /// both NULL or not NULL>
+    pub(crate) fn from_uplink_c(uc_download: ulksys::UplinkDownloadResult) -> Result<Self> {
+        // Ensure it's valid.
+        uc_download.ensure();
+
+        if let Some(err) = Error::new_uplink(uc_download.error) {
+            return Err(err);
+        }
+
+        Ok(Self { inner: uc_download })
+    }
+
+    /// Returns the last information about the object.
+    pub fn info(&self) -> Result<Info> {
+        // SAFETY: We trust the underlying c-bindings is behaving correctly when passing a valid
+        // `UplinkDownload` instance.
+        let obj_res = unsafe { ulksys::uplink_download_info(self.inner.download) };
+        if let Some(err) = Error::new_uplink(obj_res.error) {
+            return Err(err);
+        }
+
+        Info::from_uplink_c(obj_res.object)
+    }
+}
+
+impl std::io::Read for Download {
+    /// Downloads the object's data stream into `buf` and return the number of downloaded bytes,
+    /// which are at most the `buf` length, when there isn't any error.
+    ///
+    /// When it returns an error is always a [`std::io::ErrorKind::Other`] and the error payload is
+    /// an [`Error::Uplink`].
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let bp = buf.as_mut_ptr();
+        // SAFETY: we trust the underlying c-bindings of dealing with a correct `UplinkDownload`
+        // instance and an allocated buffer.
+        let read_res = unsafe {
+            ulksys::uplink_download_read(self.inner.download, bp.cast(), buf.len() as u64)
+        };
+
+        if let Some(err) = Error::new_uplink(read_res.error) {
+            use std::io::{Error as IOErr, ErrorKind};
+            return Err(IOErr::new(ErrorKind::Other, err));
+        }
+
+        Ok(read_res.bytes_read as usize)
+    }
+}
+
+impl Drop for Download {
+    fn drop(&mut self) {
+        // SAFETY: we trust that the underlying c-bindings is doing correct operations when closing
+        // and freeing a correctly created `UplinkDownloadResult` instance.
+        unsafe {
+            // At this point we cannot do anything about the error, so discarded.
+            // TODO: find out if retrying the operation it's the right thing to do for some of the
+            // kind of errors that this function may return.
+            let _ = ulksys::uplink_close_download(self.inner.download);
+            ulksys::uplink_free_download_result(self.inner);
+        }
+    }
+}
+
+impl Ensurer for ulksys::UplinkDownloadResult {
+    fn ensure(&self) -> &Self {
+        assert!(!self.download.is_null() || !self.error.is_null(), "underlying c-bindings returned an invalid UplinkDownloadResult; download and error fields are both NULL");
+        assert!((self.download.is_null() && !self.error.is_null())
+            || (!self.download.is_null() && self.error.is_null())
+            , "underlying c-bindings returned an invalid UplinkDownloadResult; download and error fields are both NOT NULL");
+        self
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use std::ptr;
+
+    use uplink_sys as ulksys;
+
+    #[test]
+    #[should_panic(
+        expected = "underlying c-bindings returned an invalid UplinkDownloadResult; download and error fields are both NULL"
+    )]
+    fn test_ensurer_uplink_upload_result_invalid_both_null() {
+        let upload_res = ulksys::UplinkDownloadResult {
+            download: ptr::null_mut(),
+            error: ptr::null_mut(),
+        };
+
+        upload_res.ensure();
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "underlying c-bindings returned an invalid UplinkDownloadResult; download and error fields are both NOT NULL"
+    )]
+    fn test_ensurer_uplink_upload_result_invalid_both_not_null() {
+        let upload_res = ulksys::UplinkDownloadResult {
+            download: &mut ulksys::UplinkDownload { _handle: 0 },
+            error: &mut ulksys::UplinkError {
+                code: 0,
+                message: ptr::null_mut(),
+            },
+        };
+
+        upload_res.ensure();
+    }
+}
