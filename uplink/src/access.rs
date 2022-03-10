@@ -123,7 +123,7 @@ impl Grant {
             drop_uplink_sys_string_result(strres)
         };
 
-        Ok(address.expect("invalid underlying c-binding"))
+        Ok(address.expect("invalid underlying c-binding, c-string with invalid UTF-8 characters"))
     }
 
     /// Serializes an access grant such that it can be used to create a [`Self::new()`] instance of
@@ -145,7 +145,8 @@ impl Grant {
             drop_uplink_sys_string_result(strres);
         }
 
-        Ok(serialized.expect("invalid underlying c-binding"))
+        Ok(serialized
+            .expect("invalid underlying c-binding, c-string with invalid UTF-8 characters"))
     }
 
     /// Creates a new access grant with specific permissions.
