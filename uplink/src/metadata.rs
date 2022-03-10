@@ -62,13 +62,9 @@ impl Custom {
     /// key-value may not have the same value in that byte position and it isn't
     /// either guarantee that the same invalid UTF-8 byte produces the same
     /// mapped value.
-    // At this time, it never returns an error, however the return type is a
-    // `Result` because it the future may return errors and changing the
-    // signature when that happen would be a breaking change, while returning a
-    // `Result` at this time doesn't have any trade-off.
-    pub(crate) fn from_uplink_c(uc_custom: &ulksys::UplinkCustomMetadata) -> Result<Self> {
+    pub(crate) fn from_uplink_c(uc_custom: &ulksys::UplinkCustomMetadata) -> Self {
         if uc_custom.count == 0 {
-            return Ok(Default::default());
+            return Default::default();
         }
 
         let mut entries = HashMap::<Box<str>, Box<str>>::with_capacity(uc_custom.count as usize);
@@ -95,10 +91,10 @@ impl Custom {
             }
         }
 
-        Ok(Self {
+        Self {
             entries,
             inner: None,
-        })
+        }
     }
 
     /// Returns the current number of entries (i.e. key-value pairs).
@@ -425,8 +421,7 @@ mod test {
             // This scope drops `to` for doing the commented check right after
             // the scope closes.
             let mut to = Custom::with_entries(&[(key1, val1), (key2, val2)]);
-            from =
-                Custom::from_uplink_c(&to.to_uplink_c()).expect("to be a valid UplinkCustomMetada");
+            from = Custom::from_uplink_c(&to.to_uplink_c());
 
             assert_eq!(from.count(), 2, "count");
             assert_eq!(from.get(key1), Some(val1), "get: 'key1'");

@@ -46,7 +46,7 @@ impl Info<'_> {
                     BoxError::from(err),
                 )
             })?;
-            metadata_custom = metadata::Custom::from_uplink_c(&(*uc_obj).custom)?;
+            metadata_custom = metadata::Custom::from_uplink_c(&(*uc_obj).custom);
             metadata_system = metadata::System::from_uplink_c(&(*uc_obj).system);
             is_prefix = (*uc_obj).is_prefix;
         }
@@ -74,12 +74,12 @@ impl Ensurer for ulksys::UplinkObject {
 /// Iterates over a collection of objects' information.
 pub struct Iterator {
     /// The object iterator type of the underlying c-bindings Rust crate that an instance of this
-    /// struct represents and guards its life time until this instance drops.
+    /// struct represents and guards its life time until the instance drops.
     inner: *mut ulksys::UplinkObjectIterator,
 }
 
 impl Iterator {
-    /// Creates an objects iterator instance from the type exposed by the uplink c-bindings.
+    /// Creates a new instance from the type exposed by the uplink c-bindings.
     pub(crate) fn from_uplink_c(uc_iterator: *mut ulksys::UplinkObjectIterator) -> Result<Self> {
         if uc_iterator.is_null() {
             return Err(Error::new_invalid_arguments(
@@ -97,8 +97,8 @@ impl<'a> std::iter::Iterator for &'a Iterator {
 
     fn next(&mut self) -> Option<Self::Item> {
         // SAFETY: we trust that the underlying c-bindings functions don't panic when called with
-        // an instance returned by them and they don't return invalid memory references or `null`
-        // if next returns `true`.
+        // an instance returned by them and they don't return any invalid memory references or
+        // `null` if next returns `true`.
         unsafe {
             if !ulksys::uplink_object_iterator_next(self.inner) {
                 let uc_error = ulksys::uplink_object_iterator_err(self.inner);
@@ -115,7 +115,7 @@ impl<'a> std::iter::Iterator for &'a Iterator {
 impl Drop for Iterator {
     fn drop(&mut self) {
         // SAFETY: we trust that the underlying c-binding is safe freeing the memory of a correct
-        // `UplinkObjectIterator` value.
+        // `UplinkObjectIterator` pointer.
         unsafe {
             ulksys::uplink_free_object_iterator(self.inner);
         }
@@ -190,7 +190,7 @@ impl std::io::Read for Download {
 impl Drop for Download {
     fn drop(&mut self) {
         // SAFETY: we trust that the underlying c-bindings is doing correct operations when closing
-        // and freeing a correctly created `UplinkDownloadResult` instance.
+        // and freeing a correctly created `UplinkDownloadResult` value.
         unsafe {
             // At this point we cannot do anything about the error, so discarded.
             // TODO: find out if retrying the operation it's the right thing to do for some of the
