@@ -10,7 +10,7 @@ use std::ffi::CStr;
 use uplink_sys as ulksys;
 
 /// Contains information about an object.
-pub struct Info<'a> {
+pub struct Object<'a> {
     /// The identifier of the object inside of the bucket which it belongs.
     pub key: &'a str,
     /// Indicates if the key is a prefix for other objects.
@@ -21,7 +21,7 @@ pub struct Info<'a> {
     pub metadata_custom: metadata::Custom,
 }
 
-impl Info<'_> {
+impl Object<'_> {
     /// Creates new instance from the underlying c-binding representation.
     ///
     /// It returns an error if `uc_obj` contains a key with invalid UTF-8 characters or
@@ -96,7 +96,7 @@ impl Iterator {
 }
 
 impl<'a> std::iter::Iterator for &'a Iterator {
-    type Item = Result<Info<'a>>;
+    type Item = Result<Object<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // SAFETY: we trust that the underlying c-bindings functions don't panic when called with
@@ -108,7 +108,7 @@ impl<'a> std::iter::Iterator for &'a Iterator {
                 return Error::new_uplink(uc_error).map(Err);
             }
 
-            Some(Info::from_uplink_c(ulksys::uplink_object_iterator_item(
+            Some(Object::from_uplink_c(ulksys::uplink_object_iterator_item(
                 self.inner,
             )))
         }
@@ -155,7 +155,7 @@ impl Download {
     }
 
     /// Returns the last information about the object.
-    pub fn info(&self) -> Result<Info> {
+    pub fn info(&self) -> Result<Object> {
         // SAFETY: We trust the underlying c-bindings is behaving correctly when passing a valid
         // `UplinkDownload` instance.
         let obj_res = unsafe { ulksys::uplink_download_info(self.inner.download) };
@@ -163,7 +163,7 @@ impl Download {
             return Err(err);
         }
 
-        Info::from_uplink_c(obj_res.object)
+        Object::from_uplink_c(obj_res.object)
     }
 }
 

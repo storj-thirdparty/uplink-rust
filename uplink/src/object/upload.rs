@@ -1,6 +1,6 @@
 //! Contains information and operations for uploading objects.
 
-use crate::{metadata, object, Ensurer, Error, Result};
+use crate::{metadata, Ensurer, Error, Object, Result};
 
 use std::ffi::{CStr, CString};
 use std::time;
@@ -75,7 +75,7 @@ impl Upload {
     ///
     /// It returns an [`Error::Uplink`] if any of the calls to the underlying-c binding returns an
     /// error.
-    pub fn info(&self) -> Result<object::Info> {
+    pub fn info(&self) -> Result<Object> {
         // SAFETY: we trust the underlying c-bidings when dealing with a correct instance.
         let uc_obj_res = unsafe { ulksys::uplink_upload_info(self.inner.upload) };
 
@@ -85,7 +85,7 @@ impl Upload {
         if let Some(err) = Error::new_uplink(uc_obj_res.error) {
             Err(err)
         } else {
-            object::Info::from_uplink_c(uc_obj_res.object)
+            Object::from_uplink_c(uc_obj_res.object)
         }
     }
 

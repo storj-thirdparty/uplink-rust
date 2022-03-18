@@ -2,19 +2,21 @@
 
 #![deny(missing_docs)]
 
+pub(crate) mod bucket;
 pub(crate) mod config;
 pub(crate) mod encryption_key;
 pub mod error;
 pub(crate) mod helpers;
+pub(crate) mod object;
 
 pub mod access;
-pub mod bucket;
 pub mod metadata;
-pub mod object;
 pub mod project;
+pub use bucket::Bucket;
 pub use config::Config;
 pub use encryption_key::EncryptionKey;
 pub use error::Error;
+pub use object::Object;
 
 /// A specialized [`Result`](https://doc.rust-lang.org/std/result/enum.Result.html)
 /// type for Storj Uplink operations.
