@@ -641,24 +641,19 @@ mod test {
 
         {
             // Valid arguments.
-            let err = grant
+            grant
                 .override_encryption_key("a-bucket", "prefix/", &enc_key)
                 .expect("when passing a valid bucket and prefix");
         }
 
         {
             // Invalid prefix, it doesn't ends with `/`.
-            if let Error::Uplink(error::Uplink { code, .. }) = grant
+            match grant
                 .override_encryption_key("a-bucket", "prefix", &enc_key)
                 .expect_err("when passing a prefix without ending with slash")
             {
-                assert_eq!(
-                    code as u32,
-                    ulksys::UPLINK_ERROR_INTERNAL,
-                    "invalid error code"
-                );
-            } else {
-                panic!("expected an Uplink error");
+                Error::Uplink(error::Uplink::Internal(_)) => {}
+                _ => panic!("expected an Uplink error"),
             }
         }
 

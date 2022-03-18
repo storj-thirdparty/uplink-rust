@@ -43,9 +43,9 @@ impl Upload {
 
     /// Aborts a non-finalized upload.
     ///
-    /// Returns an error if this method or [`Upload::commit`] was previously called. The error is
-    /// an [`Error::Uplink`] with [`ulksys::UPLINK_ERROR_UPLOAD_DONE`] code. It returns other
-    /// [`Error::Uplink`] errors in other cases.
+    /// Returns an [`crate::Error::Uplink`] with the [`crate::error::Uplink::UploadDone`] if this
+    /// method or [`Self::commit`] was previously called. It may return others [`Error::Uplink`]
+    /// variants in other cases.
     pub fn abort(&mut self) -> Result<()> {
         // SAFETY: we trust the underlying c-bidings when dealing with a correct instance.
         let err = unsafe { ulksys::uplink_upload_abort(self.inner.upload) };
@@ -58,9 +58,9 @@ impl Upload {
 
     /// Commits the object's data to the store.
     ///
-    /// Returns an error if this method or [`Upload::abort`] was previously called. The error is
-    /// an [`Error::Uplink`] with [`ulksys::UPLINK_ERROR_UPLOAD_DONE`] code. It returns other
-    /// [`Error::Uplink`] errors in other cases.
+    /// Returns an [`crate::Error::Uplink`] with the [`crate::error::Uplink::UploadDone`] if this
+    /// method or [`Self::abort`] was previously called. It may return others [`Error::Uplink`]
+    /// variants in other cases.
     pub fn commit(&mut self) -> Result<()> {
         // SAFETY: we trust the underlying c-bidings when dealing with a correct instance.
         let err = unsafe { ulksys::uplink_upload_commit(self.inner.upload) };
@@ -380,9 +380,10 @@ impl PartUpload {
 
     /// Aborts the part upload.
     ///
-    /// Returns an error if this method or [`PartUpload::commit`] was previously called. The error
-    /// is an [`Error::Uplink`] with [`ulksys::UPLINK_ERROR_UPLOAD_DONE`] code. It returns other
-    /// [`Error::Uplink`] errors in other cases.
+    ///
+    /// Returns an [`crate::Error::Uplink`] with the [`crate::error::Uplink::UploadDone`] if this
+    /// method or [`Self::commit`] was previously called. It may return others [`Error::Uplink`]
+    /// variants in other cases.
     pub fn abort(&mut self) -> Result<()> {
         // SAFETY: we trust the underlying c-bidings when dealing with a correct instance.
         let err = unsafe { ulksys::uplink_part_upload_abort(self.inner.part_upload) };
@@ -395,9 +396,9 @@ impl PartUpload {
 
     /// Commits the part upload to the store.
     ///
-    /// Returns an error if this method or [`PartUpload::abort`] was previously called. The error is
-    /// an [`Error::Uplink`] with [`ulksys::UPLINK_ERROR_UPLOAD_DONE`] code. It returns other
-    /// [`Error::Uplink`] errors in other cases.
+    /// Returns an [`crate::Error::Uplink`] with the [`crate::error::Uplink::UploadDone`] if this
+    /// method or [`Self::abort`] was previously called. It may return others [`Error::Uplink`]
+    /// variants in other cases.
     pub fn commit(&mut self) -> Result<()> {
         // SAFETY: we trust the underlying c-bidings when dealing with a correct instance.
         let err = unsafe { ulksys::uplink_part_upload_commit(self.inner.part_upload) };
