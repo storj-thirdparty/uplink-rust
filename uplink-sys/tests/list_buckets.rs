@@ -6,10 +6,16 @@ fn list_buckets() {
     // Get secrets for accessing project
     let secrets = fs::read_to_string("test_secrets.txt").unwrap();
     let secrets = secrets.lines().collect::<Vec<&str>>();
+    assert_eq!(
+        secrets.len(),
+        3,
+        "test_secrets.txt file has to contain 3 lines, satellite address, API key, and passphrase"
+    );
+
     // Access parameters
     let satellite_address = CString::new(secrets[0]).expect("CString::new failed");
     let api_key = CString::new(secrets[1]).expect("CString::new failed");
-    let passphrase = CString::new("").expect("CString::new failed");
+    let passphrase = CString::new(secrets[2]).expect("CString::new failed");
 
     unsafe {
         // Request access

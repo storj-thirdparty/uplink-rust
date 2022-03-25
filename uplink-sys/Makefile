@@ -12,7 +12,7 @@ test: $(UPLINK_C)/.git
 	cargo test
 
 .PHONY: publish-test
-publish-test: $(UPLINK_C)/.git
+publish-test: clean $(UPLINK_C)/.git
 	cargo publish --dry-run -vv
 
 .PHONY: _publish-crate
@@ -25,4 +25,5 @@ $(UPLINK_C)/.git:
 
 .PHONY: clean
 clean:
+	@rm -rf uplink-c/.build
 	cargo clean
