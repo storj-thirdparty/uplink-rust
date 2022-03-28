@@ -1,6 +1,6 @@
 [package]
 name = "uplink-sys"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Cameron Fyfe <cameron.j.fyfe@gmail.com>", "utropicmedia"]
 edition = "2021"
 links = "uplink"
@@ -12,9 +12,9 @@ keywords = ["storj", "storage"]
 
 # Contains relevant information of the Uplink c-binding.
 [package.metadata.uplink-c]
-version = "1.5.0" # keep it manually in sync with the git-submodule uplink-c checkout version tag.
+version = "1.6.1" # keep it manually in sync with the git-submodule uplink-c checkout version tag.
 
 [build-dependencies]
-bindgen = "0.59.1"
+bindgen = "0.59.2"
 
 [dependencies]
