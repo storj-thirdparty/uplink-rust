@@ -192,7 +192,7 @@ impl Grant {
     /// NOTE: this is a CPU-heavy operation that uses a password-based key derivation (Argon2). It
     /// should be a setup-only step. Most common interactions with the library should be using a
     /// serialized access grant through [`Grant::new()`](../access/struct.Grant.html#.method.new).
-    pub(crate) fn request_access_with_config_and_passphrase(
+    fn request_access_with_config_and_passphrase(
         config: &Config,
         satellite_addr: &str,
         api_key: &str,
