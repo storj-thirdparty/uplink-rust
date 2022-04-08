@@ -351,12 +351,26 @@ pub struct Upload {
 }
 
 impl Upload {
+    /// Returns the underlying c-bindings representation of the options.
     pub(crate) fn to_uplink_c(&self) -> ulksys::UplinkUploadOptions {
         let expires = self.expires.unwrap_or(Duration::ZERO);
 
         ulksys::UplinkUploadOptions {
             expires: expires.as_secs() as i64,
         }
+    }
+}
+
+/// Options for updating object's metadata.
+///
+/// Reserved for future use.
+#[derive(Default)]
+pub struct UploadObjectMetadata {}
+
+impl UploadObjectMetadata {
+    /// Returns the underlying c-bindings representation of the options.
+    pub(crate) fn to_uplink_c(&self) -> ulksys::UplinkUploadObjectMetadataOptions {
+        ulksys::UplinkUploadObjectMetadataOptions {}
     }
 }
 

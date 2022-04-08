@@ -214,6 +214,8 @@ impl Uplink {
             ulksys::UPLINK_ERROR_BUCKET_NOT_FOUND => "bucket not found",
             ulksys::UPLINK_ERROR_OBJECT_KEY_INVALID => "invalid object key",
             ulksys::UPLINK_ERROR_OBJECT_NOT_FOUND => "object not found",
+            ulksys::UPLINK_ERROR_SEGMENTS_LIMIT_EXCEEDED => "segments limit exceeded",
+            ulksys::UPLINK_ERROR_STORAGE_LIMIT_EXCEEDED => "storage limit exceeded",
             ulksys::UPLINK_ERROR_UPLOAD_DONE => "upload done",
             _ => "unknown",
         }
