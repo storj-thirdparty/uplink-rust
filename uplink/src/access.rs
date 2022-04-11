@@ -184,6 +184,12 @@ impl Grant {
         })
     }
 
+    /// Returns the underlying c-bindings representation of this access grant.
+    /// The returned access_grant will be valid for as long as self.
+    pub(crate) fn as_uplink_c(&self) -> *mut ulksys::UplinkAccess {
+        self.inner.access
+    }
+
     /// Generates a new access grant using the configuration and the specific satellite address, API
     /// key, and passphrase.
     /// It connects to the satellite address for getting a project-based salt for deterministic key
@@ -461,19 +467,6 @@ fn drop_uplink_sys_access_result(accres: ulksys::UplinkAccessResult) {
     // memory of a correct UplinkAccessResult value.
     unsafe {
         ulksys::uplink_free_access_result(accres);
-    }
-}
-
-/// Calls, only if `error` is not null,  the associated `free` underlying c-bindings function for
-/// releasing the associated resources with `error` and to free the memory pointed by it.
-fn drop_uplink_sys_error(error: *mut ulksys::UplinkError) {
-    if !error.is_null() {
-        // SAFETY: We just checked that the pointer is not null and we trust
-        // that the underlying c-binding is safe freeing its associated
-        // resources and itself.
-        unsafe {
-            ulksys::uplink_free_error(error);
-        }
     }
 }
 

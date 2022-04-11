@@ -1,6 +1,7 @@
 //! Storj DCS Object and related types.
 
-mod upload;
+pub mod upload;
+
 pub use upload::Upload;
 
 use crate::{error::BoxError, metadata, Ensurer, Error, Result};

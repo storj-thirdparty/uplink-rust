@@ -532,6 +532,20 @@ pub struct PartIterator {
     inner: *mut ulksys::UplinkPartIterator,
 }
 
+impl PartIterator {
+    /// Creates a new instance from the type exposed by the uplink c-bindings.
+    ///
+    /// It panics if `uc_iterator` is NULL.
+    pub(crate) fn from_uplink_c(uc_iterator: *mut ulksys::UplinkPartIterator) -> Self {
+        assert!(
+            !uc_iterator.is_null(),
+            "BUG: `uc_iterator` argument cannot be NULL"
+        );
+
+        Self { inner: uc_iterator }
+    }
+}
+
 impl std::iter::Iterator for PartIterator {
     type Item = Result<Part>;
 

@@ -17,6 +17,7 @@ pub use config::Config;
 pub use encryption_key::EncryptionKey;
 pub use error::Error;
 pub use object::Object;
+pub use project::Project;
 
 /// A specialized [`Result`](https://doc.rust-lang.org/std/result/enum.Result.html)
 /// type for Storj Uplink operations.

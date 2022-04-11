@@ -5,6 +5,8 @@ use crate::Error;
 use std::ffi::CString;
 use std::os::raw::c_char;
 
+use uplink_sys as ulksys;
+
 /// creates a CString from a function &str function argument and if there is an
 /// error it returns an Error::InvalidArguments with the passed argument's
 /// name.
@@ -41,6 +43,19 @@ pub unsafe fn unchecked_ptr_c_char_and_length_to_str(
     }
 
     chars.into_boxed_str()
+}
+
+/// Calls, only if `error` is not null, the associated `free` underlying c-bindings function for
+/// releasing the associated resources with `error` and to free the memory pointed by it.
+pub fn drop_uplink_sys_error(error: *mut ulksys::UplinkError) {
+    if !error.is_null() {
+        // SAFETY: We just checked that the pointer is not null and we trust
+        // that the underlying c-binding is safe freeing its associated
+        // resources and itself.
+        unsafe {
+            ulksys::uplink_free_error(error);
+        }
+    }
 }
 
 #[cfg(test)]
