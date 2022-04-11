@@ -58,24 +58,18 @@ impl Download {
 
 /// Options for listing buckets.
 #[derive(Default)]
-pub struct ListBuckets<'a> {
-    /// It's the starting position of the iterator. The first item of the list
-    /// is the one right after the cursor.
-    cursor: &'a str,
-    /// C representation of `cursor` for providing it to the underlying
-    /// c-bindings and guards its lifetime until `self` gets dropped.
+pub struct ListBuckets {
+    /// C representation of `cursor` for providing it to the underlying c-bindings and guards its
+    /// lifetime until `self` gets dropped.
     inner_cursor: CString,
 }
 
-impl<'a> ListBuckets<'a> {
+impl ListBuckets {
     /// Creates options for listing buckets with the specified cursor value.
     /// It returns an error if `cursor` contains any null byte (0 byte).
-    pub fn with_cursor(cursor: &'a str) -> Result<Self> {
+    pub fn with_cursor(cursor: &str) -> Result<Self> {
         let inner_cursor = helpers::cstring_from_str_fn_arg("cursor", cursor)?;
-        Ok(Self {
-            cursor,
-            inner_cursor,
-        })
+        Ok(Self { inner_cursor })
     }
 
     /// Returns the underlying c-bindings representation of the options.
