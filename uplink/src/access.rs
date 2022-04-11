@@ -89,7 +89,7 @@ impl Grant {
         let prefix = helpers::cstring_from_str_fn_arg("prefix", prefix)?;
 
         // SAFETY: we trust that the underlying c-binding is safe.
-        let uerr = unsafe {
+        let uc_err = unsafe {
             ulksys::uplink_access_override_encryption_key(
                 self.inner.access,
                 bucket.as_ptr() as *mut c_char,
@@ -98,8 +98,8 @@ impl Grant {
             )
         };
 
-        Error::new_uplink(uerr).map_or(Ok(()), |err| {
-            drop_uplink_sys_error(uerr);
+        Error::new_uplink(uc_err).map_or(Ok(()), |err| {
+            helpers::drop_uplink_sys_error(uc_err);
             Err(err)
         })
     }
