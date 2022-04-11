@@ -16,15 +16,17 @@ pub struct CommitUpload<'a> {
 impl<'a> CommitUpload<'a> {
     /// Creates an instance of commit upload options.
     ///
-    /// It's mutable because converting to a Uplink-C representation requires
-    /// it.
+    /// It's mutable because converting to a Uplink-C representation requires it.
     pub fn new(custom_metadata: &'a mut Custom) -> Self {
         Self { custom_metadata }
     }
 
     /// Returns the underlying c-bindings representation of the options.
-    /// The returned options' pointers are valid for as long as the
-    /// `custom_metadata` shared reference received by [`Self::new`].
+    /// The returned options' pointers are valid for as long as the `custom_metadata` shared
+    /// reference received by [`Self::new`].
+    ///
+    /// It takes a mutable reference because [`metadata::Custom.to_uplink_c`] requires a mutable
+    /// reference.
     pub(crate) fn to_uplink_c(&mut self) -> ulksys::UplinkCommitUploadOptions {
         ulksys::UplinkCommitUploadOptions {
             custom_metadata: self.custom_metadata.to_uplink_c(),
@@ -36,8 +38,8 @@ impl<'a> CommitUpload<'a> {
 #[derive(Default)]
 pub struct Download {
     /// The initial point of the object's blob to download.
-    /// If it's negative, it will start at the suffix of the blob but it's isn't
-    /// supported to be negative with a positive `length`.
+    /// If it's negative, it will start at the suffix of the blob but it's isn't supported to be
+    /// negative with a positive `length`.
     pub offset: i64,
     /// The length of the blob starting from `offset` to download.
     /// If it's negative, it will read until the end of the blob.
@@ -88,19 +90,18 @@ impl<'a> ListBuckets<'a> {
 /// Options for listing objects.
 #[derive(Default)]
 pub struct ListObjects<'a> {
-    /// Only list objects with this key prefix. When not empty, it must ends
-    /// with slash.
+    /// Only list objects with this key prefix. When not empty, it must ends with slash.
     prefix: &'a str,
-    /// C representation of `prefix` for providing it to the underlying
-    /// c-bindings and guards its lifetime until `self` gets dropped.
+    /// C representation of `prefix` for providing it to the underlying c-bindings and guards its
+    /// lifetime until `self` gets dropped.
     inner_prefix: CString,
-    /// Specifies the starting position of the iterator by offsetting from the
-    /// first object of the list.
+    /// Specifies the starting position of the iterator by offsetting from the first object of the
+    /// list.
     /// The first item of the list is the one after the cursor.
     /// The list of objects depends on the `prefix`.
     cursor: &'a str,
-    /// C representation of `cursor` for providing it to the underlying
-    /// c-bindings and guards its lifetime until `self` gets dropped.
+    /// C representation of `cursor` for providing it to the underlying c-bindings and guards its
+    /// lifetime until `self` gets dropped.
     inner_cursor: CString,
     /// Iterate the objects without collapsing prefixes.
     pub recursive: bool,
@@ -141,8 +142,7 @@ impl<'a> ListObjects<'a> {
         Self::new("", cursor)
     }
 
-    /// Creates options of listing objects options with the specified prefix
-    /// and cursor.
+    /// Creates options of listing objects options with the specified prefix and cursor.
     ///
     /// `prefix` and `cursor` must:
     /// * not be empty.
@@ -164,12 +164,12 @@ impl<'a> ListObjects<'a> {
         Self::new(prefix, cursor)
     }
 
-    /// Creates options for listing objects with only verify that `prefix` and
-    /// `cursor` don't contain any null byte (0 byte), which are essential for
-    /// working fine with the underlying c-bindings.
+    /// Creates options for listing objects with only verifying that `prefix` and `cursor` don't
+    /// contain any null byte (0 byte), which are essential for working fine with the underlying
+    /// c-bindings.
     ///
-    /// This is a convenient constructor to be used by the public constructors
-    /// which impose more contains  on `prefix` and `cursor`.
+    /// This is a convenient constructor to be used by the public constructors which impose more
+    /// contains  on `prefix` and `cursor`.
     fn new(prefix: &'a str, cursor: &'a str) -> Result<Self> {
         let inner_prefix = helpers::cstring_from_str_fn_arg("prefix", prefix)?;
         let inner_cursor = helpers::cstring_from_str_fn_arg("cursor", cursor)?;
@@ -199,19 +199,18 @@ impl<'a> ListObjects<'a> {
 /// Options for listing uncommitted uploads.
 #[derive(Default)]
 pub struct ListUploads<'a> {
-    /// Only list uncommitted uploads with this key prefix. When not empty, it
-    /// must ends with slash.
+    /// Only list uncommitted uploads with this key prefix. When not empty, it must ends with slash.
     prefix: &'a str,
     /// C representation of `prefix` for providing it to the underlying
     /// c-bindings and guards its lifetime until `self` gets dropped.
     inner_prefix: CString,
-    /// Specifies the starting position of the iterator by offsetting from the
-    /// first object of the list.
+    /// Specifies the starting position of the iterator by offsetting from the first object of the
+    /// list.
     /// The first item of the list is the one after the cursor.
     /// The list of objects depends on the `prefix`.
     cursor: &'a str,
-    /// C representation of `cursor` for providing it to the underlying
-    /// c-bindings and guards its lifetime until `self` gets dropped.
+    /// C representation of `cursor` for providing it to the underlying c-bindings and guards its
+    /// lifetime until `self` gets dropped.
     inner_cursor: CString,
     /// Iterate the objects without collapsing prefixes.
     pub recursive: bool,
@@ -222,8 +221,7 @@ pub struct ListUploads<'a> {
 }
 
 impl<'a> ListUploads<'a> {
-    /// Creates options of listing uncommitted uploads options with the
-    /// specified prefix.
+    /// Creates options of listing uncommitted uploads options with the specified prefix.
     ///
     /// `prefix` must:
     /// * not be empty.
@@ -240,8 +238,7 @@ impl<'a> ListUploads<'a> {
         Self::new(prefix, "")
     }
 
-    /// Creates options of listing uncommitted uploads options with the
-    /// specified cursor.
+    /// Creates options of listing uncommitted uploads options with the specified cursor.
     ///
     /// `cursor` must:
     /// * not be empty.
@@ -254,8 +251,7 @@ impl<'a> ListUploads<'a> {
         Self::new("", cursor)
     }
 
-    /// Creates options of listing uncommitted options with the specified
-    /// prefix and cursor.
+    /// Creates options of listing uncommitted options with the specified prefix and cursor.
     ///
     /// `prefix` and `cursor` must:
     /// * not be empty.
@@ -277,12 +273,12 @@ impl<'a> ListUploads<'a> {
         Self::new(prefix, cursor)
     }
 
-    /// Creates options for listing uncommitted with only verify that `prefix`
-    /// and `cursor` don't contain any null byte (0 byte), which are essential
-    /// for working fine with the underlying c-bindings.
+    /// Creates options for listing uncommitted with only verify that `prefix` and `cursor` don't
+    /// contain any null byte (0 byte), which are essential for working fine with the underlying
+    /// c-bindings.
     ///
-    /// This is a convenient constructor to be used by the public constructors
-    /// which impose more contains  on `prefix` and `cursor`.
+    /// This is a convenient constructor to be used by the public constructors which impose more
+    /// contains  on `prefix` and `cursor`.
     fn new(prefix: &'a str, cursor: &'a str) -> Result<Self> {
         let inner_prefix = helpers::cstring_from_str_fn_arg("prefix", prefix)?;
         let inner_cursor = helpers::cstring_from_str_fn_arg("cursor", cursor)?;
@@ -312,8 +308,8 @@ impl<'a> ListUploads<'a> {
 /// Options for listing uploads parts.
 #[derive(Default)]
 pub struct ListUploadParts {
-    /// Specifies the starting position of the iterator by offsetting from the
-    /// first object of the list.
+    /// Specifies the starting position of the iterator by offsetting from the first object of the
+    /// list.
     ///
     /// The first item of the list is the one after the cursor.
     /// Parts start with index 1.
@@ -345,8 +341,8 @@ impl MoveObject {
 pub struct Upload {
     /// Determine when the object expires.
     ///
-    /// The time is measured with the number of seconds since the Unix Epoch
-    /// time. 0 is never and it's the same as `None`.
+    /// The time is measured with the number of seconds since the Unix Epoch time. 0 is never and
+    /// it's the same as `None`.
     pub expires: Option<Duration>,
 }
 

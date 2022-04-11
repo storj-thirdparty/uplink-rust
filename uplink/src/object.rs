@@ -27,7 +27,7 @@ impl Object<'_> {
     /// It returns an error if `uc_obj` contains a key with invalid UTF-8 characters or
     /// [`metadata::Custom::from_uplink_c`] return an error.
     ///
-    /// It consumes `uc_obj` hence the pointer isn't valid anymore after calling this method.
+    /// The caller can free the `uc_obj` after this call without affecting the returned value.
     pub(crate) fn from_uplink_c(uc_obj: *mut ulksys::UplinkObject) -> Result<Self> {
         if uc_obj.is_null() {
             return Err(Error::new_invalid_arguments("uc_obj", "cannot be null"));

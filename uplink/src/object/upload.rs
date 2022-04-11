@@ -216,9 +216,9 @@ impl Drop for Iterator {
 
 /// Contains information about a multipart upload operation.
 pub struct Info<'a> {
-    /// The ID associted to the upload.
+    /// The ID associated to the upload.
     pub upload_id: &'a str,
-    /// The object's key associted to the upload.
+    /// The object's key associated to the upload.
     pub key: &'a str,
     /// If `key` is a prefix or not.
     pub is_prefix: bool,
@@ -229,17 +229,18 @@ pub struct Info<'a> {
 }
 
 impl Info<'_> {
-    /// Creates a new instance from the underlying c-bindings representation. It consumes the passed
-    /// pointer so the caller must not use the pointer once it calls this function.
+    /// Creates a new instance from the underlying c-bindings representation.
     ///
     /// It panics if `uc_upload` is NULL or is invalid, see [`ulksys::UplinkUploadInfo::ensure`].
+    ///
+    /// The caller can free the `uc_upload` after this call without affecting the returned value.
     pub(crate) fn from_uplink_c(uc_upload: *mut ulksys::UplinkUploadInfo) -> Self {
         assert!(
             !uc_upload.is_null(),
             "BUG: `uc_upload` argument cannot be NULL"
         );
 
-        // SAFETY: we just checked above thas this pointer isn't NULL.
+        // SAFETY: we just checked above that this pointer isn't NULL.
         let upload = unsafe { *uc_upload };
         upload.ensure();
 
@@ -279,14 +280,15 @@ pub struct Part {
 }
 
 impl Part {
-    /// Creates a new instance from the underlying c-bidnings representation. It consumes the
-    /// passed pointer so the caller must no use the pointer once it calls this function.
+    /// Creates a new instance from the underlying c-bidnings representation.
     ///
     /// It panics if `uc_part` is NULL.
+    ///
+    /// The caller can free the `uc_upload` after this call without affecting the returned value.
     pub(crate) fn from_uplink_c(uc_part: *mut ulksys::UplinkPart) -> Self {
         assert!(!uc_part.is_null(), "BUG: `uc_part` argument cannot be NULL");
 
-        // SAFETY: we just checked above thas this pointer isn't NULL.
+        // SAFETY: we just checked above that this pointer isn't NULL.
         let uc_partv = unsafe { *uc_part };
         let modified = if uc_partv.modified < 0 {
             0
