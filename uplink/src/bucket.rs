@@ -18,11 +18,14 @@ pub struct Bucket<'a> {
 impl<'a> Bucket<'a> {
     /// Creates a Bucket instance from the type exposed by the uplink c-bindings.
     ///
-    /// It consumes `uc_bucket` hence the pointer isn't valid anymore after calling this method.
+    /// The caller can free the `uc_obj` after this call without affecting the returned value.
+    ///
+    /// It panics if `uc_part` is NULL.
     pub(crate) fn from_uplink_c(uc_bucket: *mut ulksys::UplinkBucket) -> Result<Self> {
-        if uc_bucket.is_null() {
-            return Err(Error::new_invalid_arguments("uc_bucket", "cannot be null"));
-        }
+        assert!(
+            !uc_bucket.is_null(),
+            "BUG: `uc_bucket` argument cannot be NULL"
+        );
 
         let name: &str;
         let created_at: Duration;
@@ -57,16 +60,16 @@ pub struct Iterator {
 }
 
 impl Iterator {
-    /// Creates a buckets Iterator instance from the type exposed by the unlink c-bindings.
-    pub(crate) fn from_uplink_c(uc_iterator: *mut ulksys::UplinkBucketIterator) -> Result<Self> {
-        if uc_iterator.is_null() {
-            return Err(Error::new_invalid_arguments(
-                "uc_iterator",
-                "cannot be null",
-            ));
-        }
+    /// Creates a new instance from the type exposed by the uplink c-bindings.
+    ///
+    /// It panics if `uc_iterator` is NULL.
+    pub(crate) fn from_uplink_c(uc_iterator: *mut ulksys::UplinkBucketIterator) -> Self {
+        assert!(
+            !uc_iterator.is_null(),
+            "BUG: `uc_iterator` argument cannot be NULL"
+        );
 
-        Ok(Iterator { inner: uc_iterator })
+        Iterator { inner: uc_iterator }
     }
 }
 

@@ -28,10 +28,10 @@ impl Object<'_> {
     /// [`metadata::Custom::from_uplink_c`] return an error.
     ///
     /// The caller can free the `uc_obj` after this call without affecting the returned value.
+    ///
+    /// It panics if `uc_part` is NULL.
     pub(crate) fn from_uplink_c(uc_obj: *mut ulksys::UplinkObject) -> Result<Self> {
-        if uc_obj.is_null() {
-            return Err(Error::new_invalid_arguments("uc_obj", "cannot be null"));
-        }
+        assert!(!uc_obj.is_null(), "BUG: `uc_obj` argument cannot be NULL");
 
         let key: &str;
         let is_prefix: bool;
@@ -83,15 +83,15 @@ pub struct Iterator {
 
 impl Iterator {
     /// Creates a new instance from the type exposed by the uplink c-bindings.
-    pub(crate) fn from_uplink_c(uc_iterator: *mut ulksys::UplinkObjectIterator) -> Result<Self> {
-        if uc_iterator.is_null() {
-            return Err(Error::new_invalid_arguments(
-                "uc_iterator",
-                "cannot be null",
-            ));
-        }
+    ///
+    /// It panics if `uc_iterator` is NULL.
+    pub(crate) fn from_uplink_c(uc_iterator: *mut ulksys::UplinkObjectIterator) -> Self {
+        assert!(
+            !uc_iterator.is_null(),
+            "BUG: `uc_iterator` argument cannot be NULL"
+        );
 
-        Ok(Iterator { inner: uc_iterator })
+        Iterator { inner: uc_iterator }
     }
 }
 
