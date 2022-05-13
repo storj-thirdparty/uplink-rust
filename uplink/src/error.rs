@@ -22,24 +22,18 @@ pub enum Error {
 }
 
 impl Error {
-    /// Creates an `Internal` variant with the provided context message.
-    pub(crate) fn new_internal(ctx_msg: &str) -> Self {
+    /// Creates an [`Internal` variant](Self::Internal) from the provided context message and the
+    /// error that originated it.
+    pub(crate) fn new_internal(ctx_msg: &str, err: BoxError) -> Self {
         Error::Internal(Internal {
             ctx_msg: String::from(ctx_msg),
-            inner: None,
+            inner: err,
         })
     }
 
-    /// Creates an `Internal` variant from the provided context message and the error that
-    /// originated it.
-    pub(crate) fn new_internal_with_inner(ctx_msg: &str, berr: BoxError) -> Self {
-        Error::Internal(Internal {
-            ctx_msg: String::from(ctx_msg),
-            inner: Some(berr),
-        })
-    }
-
-    /// Convenient constructor for creating an [`Self::InvalidArguments`] Error.
+    /// Convenient constructor for creating an [`InvalidArguments` variant](Self::InvalidArguments)
+    /// Error.
+    ///
     /// See [`Args`] documentation to know about the convention for the value of the `names`
     /// parameter because this constructor will panic in the future when the constraints will be
     /// implemented by [`Args::new`] constructor.
@@ -59,7 +53,7 @@ impl stderr::Error for Error {
         match self {
             Error::InvalidArguments { .. } => None,
             Error::Uplink { .. } => None,
-            Error::Internal(Internal { inner, .. }) => inner.as_ref().map(|be| &**be as _),
+            Error::Internal(Internal { inner, .. }) => Some(inner.as_ref()),
         }
     }
 }
@@ -284,14 +278,18 @@ impl fmt::Display for Uplink {
 pub struct Internal {
     /// A human friendly message to provide context of the error.
     pub ctx_msg: String,
-    /// The inner error that caused this internal error; it's None when some internal state/values
-    /// are expected but those are rare situations because most of the times this internal errors
-    /// should be originated by an inner error.
-    inner: Option<BoxError>,
+    /// The inner error that caused this internal error
+    inner: BoxError,
 }
 
 impl fmt::Display for Internal {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}", self.ctx_msg)
+    }
+}
+
+impl stderr::Error for Internal {
+    fn source(&self) -> Option<&(dyn stderr::Error + 'static)> {
+        Some(self.inner.as_ref())
     }
 }
