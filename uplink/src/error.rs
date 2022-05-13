@@ -6,6 +6,7 @@ use std::fmt;
 
 use uplink_sys as ulksys;
 
+/// Convenient type alias to shorten the signature on every usage.
 pub(crate) type BoxError = Box<dyn stderr::Error + Send + Sync>;
 
 /// The error type that this crate use for wrapping errors.
@@ -17,7 +18,7 @@ pub enum Error {
     Internal(Internal),
     /// Identifies invalid arguments passed to a function or method.
     InvalidArguments(Args),
-    /// Identifies a native error returned by the underlying Uplink c-bindings library.
+    /// Identifies a native error returned by the FFI.
     Uplink(Uplink),
 }
 
@@ -41,10 +42,22 @@ impl Error {
         Self::InvalidArguments(Args::new(names, msg))
     }
 
-    /// Convenient constructor for creating an Uplink Error.
-    /// It returns None if ulkerr is null.
-    pub(crate) fn new_uplink(ulkerr: *mut ulksys::UplinkError) -> Option<Self> {
-        Uplink::from_uplink_c(ulkerr).map(Self::Uplink)
+    /// Convenient constructor for creating an [`Uplink` variant](Self::Uplink).
+    /// It returns None if `err` is `NULL`.
+    ///
+    /// See [`Uplink::new`] for knowing about the ownership of `err` after calling this
+    /// constructor.
+    pub(crate) fn new_uplink(err: *mut ulksys::UplinkError) -> Option<Self> {
+        Uplink::new(err).map(Self::Uplink)
+    }
+
+    /// Convenient constructor for creating an [`Uplink` variant](Self::Uplink).
+    /// It returns None if `err` is `NULL`.
+    ///
+    /// It's the same than using the [`new_uplink` constructor](Self::new_uplink) but it takes
+    /// ownership of `err`.
+    pub(crate) fn from_ffi_error(err: *mut ulksys::UplinkError) -> Option<Self> {
+        Uplink::from_ffi_error(err).map(Self::Uplink)
     }
 }
 
@@ -152,16 +165,15 @@ impl fmt::Display for Args {
     }
 }
 
-/// Wraps a native error returned by the underlying Uplink C bindings library providing the access
-/// to its details.
+/// Wraps a native error returned by the FFI providing the access to its details.
 #[derive(Debug)]
 pub enum Uplink {
     /// A Storj DCS network internal error.
     Internal(String),
     /// A Storj DCS network cancellation error.
     Canceled(String),
-    /// An invalid handle is passed to the underlying c-bindings. This error shouldn't happen and
-    /// when it does, it's likely due to a bug in the c-bindings or in the Rust bindings.
+    /// An invalid handle is passed to the FFI. This error shouldn't happen and
+    /// when it does, it's likely due to a bug in the FFI.
     InvalidHandle(String),
     /// Storj DCS network rejected the operation because the client over passed the rate-limit
     /// allowance.
@@ -195,32 +207,37 @@ pub enum Uplink {
     /// or aborted.
     UploadDone(String),
 
-    /// Unknowns isn't an actual code in the Uplink c-bindings constants. It's mostly used to map
-    /// a code when it doesn't match any and have not to panic. Callers should report this as a BUG
-    /// that may be due to not having updated the underlying Uplink c-bindings to the last version.
+    /// Unknowns isn't an actual code in the FFI constants. It's mostly used to map a code when it
+    /// doesn't match any and have not to panic. Callers should report this as a BUG that may be
+    /// due to not having updated the FFI to the last version.
     Unknown(String),
 }
 
 impl Uplink {
-    /// Creates a new `Uplink` from a pointer to the uplink c-bindings error struct.
-    /// It returns None if pointer is NULL.
+    /// Creates a new instance from a pointer FFI error struct.
+    /// It returns `None` if `err` is `NULL`.
     ///
-    /// The returned instance has a copy of everything that requires from the passed pointer, so the
-    /// ownership of all its resources remains in the caller, hence it must care about releasing
-    /// them.
-    fn from_uplink_c(ulkerr: *mut ulksys::UplinkError) -> Option<Self> {
-        if ulkerr.is_null() {
+    /// NOTE The returned instance has a copy of everything that requires from the passed pointer,
+    /// so the ownership of all its resources remains in the caller, hence it must care about
+    /// releasing them. See [architecture documentation](crate::docs::architecture).
+    pub(crate) fn new(err: *mut ulksys::UplinkError) -> Option<Self> {
+        if err.is_null() {
             return None;
         }
 
         // SAFETY: We have checked just above that the pointer isn't NULL.
-        let ulkerr = unsafe { *ulkerr };
-        // SAFETY: We trust the underlying c-bindings that the error contains valid C strings.
-        let msg = unsafe {
-            CStr::from_ptr(ulkerr.message)
-                .to_str()
-                .expect("invalid Uplink c-bindings error message; it contains non UTF-8 characters")
-                .to_string()
+        let ulkerr = unsafe { *err };
+
+        let msg = if ulkerr.message.is_null() {
+            String::new()
+        } else {
+            // SAFETY: We trust the FFI that the error contains valid C strings.
+            unsafe {
+                CStr::from_ptr(ulkerr.message)
+                    .to_str()
+                    .expect("invalid FFI error message; it contains non UTF-8 characters")
+                    .to_string()
+            }
         };
 
         Some(match ulkerr.code as u32 {
@@ -240,6 +257,20 @@ impl Uplink {
             ulksys::UPLINK_ERROR_UPLOAD_DONE => Self::UploadDone(msg),
             _ => Self::Unknown(msg),
         })
+    }
+
+    /// Creates a new instance from a pointer to the FFI error struct.
+    /// It returns `None` if `err` is `NULL`.
+    pub(crate) fn from_ffi_error(err: *mut ulksys::UplinkError) -> Option<Self> {
+        let opt = Self::new(err);
+        if opt.is_some() {
+            // SAFETY: at this point we know that pointer wasn't `NULL` because the option contains
+            // an error so we can free the memory. We trust that FFI safely free the memory of
+            // pointers allocated by itself.
+            unsafe { ulksys::uplink_free_error(err) };
+        }
+
+        opt
     }
 }
 

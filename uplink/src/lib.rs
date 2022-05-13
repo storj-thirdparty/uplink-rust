@@ -16,6 +16,7 @@ pub(crate) mod encryption_key;
 pub mod error;
 pub(crate) mod helpers;
 pub(crate) mod object;
+mod uplink_c;
 
 pub mod access;
 pub mod metadata;
@@ -36,15 +37,3 @@ pub use project::Project;
 /// This type is generally used to avoid writing out `storj_uplink_lib::Error`
 /// directly and reduce repetition making the signature functions more concise.
 pub type Result<T> = std::result::Result<T, error::Error>;
-
-/// An interface for ensuring that an instance of type returned by the
-/// underlying c-binding is correct in terms that it doesn't violate its own
-/// rules.
-/// For example a UplinkAccessResult struct has 2 fields which are 2 pointers,
-/// one is the access and the other is an error, always one and only one can be
-/// NULL.
-trait Ensurer {
-    /// Checks that the instance is correct according its own rules and it
-    /// returns itself, otherwise it panics.
-    fn ensure(&self) -> &Self;
-}

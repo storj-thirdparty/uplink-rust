@@ -1,11 +1,11 @@
 //! Storj DCS Access Grant and bound types.
 
 use crate::config::Config;
-use crate::{helpers, EncryptionKey, Ensurer, Error, Result};
+use crate::uplink_c::Ensurer;
+use crate::{helpers, EncryptionKey, Error, Result};
 
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
-use std::ptr;
 use std::time::Duration;
 use std::vec::Vec;
 
@@ -19,8 +19,8 @@ use uplink_sys as ulksys;
 /// information, and information about the Satellite responsible for the project's metadata.
 #[derive(Debug)]
 pub struct Grant {
-    /// The access type of the underlying c-bindings than an instance of this struct represents and
-    /// guards its life time until this instance drops.
+    /// The FFI access type that an instance of this struct represents and guards its lifetime
+    /// until this instance drops.
     ///
     /// It's an access result because it's the one that holds the access grant and allows to free
     /// its memory.
@@ -32,17 +32,9 @@ impl Grant {
     pub fn new(serialized_access: &str) -> Result<Self> {
         let saccess = helpers::cstring_from_str_fn_arg("serialized_access", serialized_access)?;
 
-        // SAFETY: we trust that the underlying c-binding is safe, nonetheless we ensure `accres` is
-        // correct through the ensure method of the implemented Ensurer trait.
-        let accres =
-            unsafe { *ulksys::uplink_parse_access(saccess.as_ptr() as *mut c_char).ensure() };
-
-        if let Some(e) = Error::new_uplink(accres.error) {
-            drop_uplink_sys_access_result(accres);
-            Err(e)
-        } else {
-            Ok(Grant { inner: accres })
-        }
+        // SAFETY: we are passing a pointer to a valid CString to the FFI.
+        let res = unsafe { ulksys::uplink_parse_access(saccess.as_ptr() as *mut c_char) };
+        Self::from_ffi_access_result(res)
     }
 
     /// Generates a new access grant using a passphrase requesting to the satellite a project-based
@@ -56,138 +48,18 @@ impl Grant {
         let api_key = helpers::cstring_from_str_fn_arg("api_key", api_key)?;
         let passphrase = helpers::cstring_from_str_fn_arg("passphrase", passphrase)?;
 
-        // SAFETY: we trust that the underlying c-binding is safe, nonetheless we ensure `accres`
-        // is correct through the ensure method of the implemented Ensurer trait.
-        let accres = unsafe {
-            *ulksys::uplink_request_access_with_passphrase(
+        // SAFETY: it's safe to pass this strings to the FFI function because it makes copies of it
+        // to return the result so the result will still valid when the call to this method ends
+        // which is when those strings will be dropped.
+        let res = unsafe {
+            ulksys::uplink_request_access_with_passphrase(
                 satellite_addr.as_ptr() as *mut c_char,
                 api_key.as_ptr() as *mut c_char,
                 passphrase.as_ptr() as *mut c_char,
             )
-            .ensure()
         };
 
-        Error::new_uplink(accres.error).map_or(Ok(Grant { inner: accres }), |err| {
-            drop_uplink_sys_access_result(accres);
-            Err(err)
-        })
-    }
-
-    /// Overrides the root encryption key for the prefix in bucket with the encryption key.
-    /// `prefix` must end with slash (i.e. `/`), otherwise it returns an error.
-    ///
-    /// This method is useful for overriding the encryption key in user-specific access grants when
-    /// implementing multitenancy in a single app bucket.
-    /// See relevant information in the general crate documentation.
-    pub fn override_encryption_key(
-        &self,
-        bucket: &str,
-        prefix: &str,
-        encryption_key: &EncryptionKey,
-    ) -> Result<()> {
-        let bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
-        let prefix = helpers::cstring_from_str_fn_arg("prefix", prefix)?;
-
-        // SAFETY: we trust that the underlying c-binding is safe.
-        let uc_err = unsafe {
-            ulksys::uplink_access_override_encryption_key(
-                self.inner.access,
-                bucket.as_ptr() as *mut c_char,
-                prefix.as_ptr() as *mut c_char,
-                encryption_key.as_uplink_c(),
-            )
-        };
-
-        Error::new_uplink(uc_err).map_or(Ok(()), |err| {
-            helpers::drop_uplink_sys_error(uc_err);
-            Err(err)
-        })
-    }
-
-    /// Returns the satellite node URL associated with this access grant.
-    pub fn satellite_address(&self) -> Result<&str> {
-        // SAFETY: we trust that the underlying c-binding is safe, nonetheless we ensure `strres` is
-        // correct through the ensure method of the implemented Ensurer trait.
-        let strres =
-            unsafe { *ulksys::uplink_access_satellite_address(self.inner.access).ensure() };
-
-        if let Some(e) = Error::new_uplink(strres.error) {
-            drop_uplink_sys_string_result(strres);
-            return Err(e);
-        }
-
-        let address;
-        // SAFETY: at this point we have already checked that `strres`.string is NOT NULL.
-        unsafe {
-            address = CStr::from_ptr(strres.string).to_str();
-            drop_uplink_sys_string_result(strres)
-        };
-
-        Ok(address.expect("invalid underlying c-binding, c-string with invalid UTF-8 characters"))
-    }
-
-    /// Serializes an access grant such that it can be used to create a [`Self::new()`] instance of
-    /// this type or parsed with other tools.
-    pub fn serialize(&self) -> Result<&str> {
-        // SAFETY: we trust that the underlying c-binding is safe, nonetheless we ensure `strres` is
-        // correct through the ensure method of the implemented Ensurer trait.
-        let strres = unsafe { *ulksys::uplink_access_serialize(self.inner.access).ensure() };
-
-        if let Some(e) = Error::new_uplink(strres.error) {
-            drop_uplink_sys_string_result(strres);
-            return Err(e);
-        }
-
-        let serialized;
-        // SAFETY: at this point we have already checked that strres.string is NOT NULL.
-        unsafe {
-            serialized = CStr::from_ptr(strres.string).to_str();
-            drop_uplink_sys_string_result(strres);
-        }
-
-        Ok(serialized
-            .expect("invalid underlying c-binding, c-string with invalid UTF-8 characters"))
-    }
-
-    /// Creates a new access grant with specific permissions.
-    ///
-    /// An access grant can only have their existing permissions restricted, and the resulting
-    /// access will only allow for the intersection of all previous share calls in the access
-    /// construction chain.
-    ///
-    /// Prefixes restrict the access grant (and internal encryption information) to only contain
-    /// enough information to allow access to just those prefixes.
-    ///
-    /// To revoke an access grant see [`Project.revoke_access()`](../project/struct.Project.html#method.revoke_access).
-    pub fn share(&self, permission: &Permission, prefixes: Vec<SharePrefix>) -> Result<Grant> {
-        let mut ulk_prefixes: Vec<ulksys::UplinkSharePrefix> = Vec::with_capacity(prefixes.len());
-
-        for sp in prefixes {
-            ulk_prefixes.push(sp.as_uplink_c())
-        }
-
-        // SAFETY: we trust that the underlying c-binding is safe, nonetheless we ensure `accres` is
-        // correct through the ensure method of the implemented Ensurer trait.
-        let accres = unsafe {
-            *ulksys::uplink_access_share(
-                self.inner.access,
-                permission.to_uplink_c(),
-                ulk_prefixes.as_mut_ptr(),
-                ulk_prefixes.len() as i64,
-            )
-            .ensure()
-        };
-
-        Error::new_uplink(accres.error).map_or(Ok(Grant { inner: accres }), |err| {
-            drop_uplink_sys_access_result(accres);
-            Err(err)
-        })
-    }
-
-    /// Returns the underlying c-bindings representation of this access grant.
-    /// The returned access_grant will be valid for as long as self.
-    pub(crate) fn as_uplink_c(&self) -> *mut ulksys::UplinkAccess {
-        self.inner.access
+        Self::from_ffi_access_result(res)
     }
 
     /// Generates a new access grant using the configuration and the specific satellite address, API
@@ -208,11 +80,12 @@ impl Grant {
         let api_key = helpers::cstring_from_str_fn_arg("api_key", api_key)?;
         let passphrase = helpers::cstring_from_str_fn_arg("passphrase", passphrase)?;
 
-        // SAFETY: we trust that the underlying c-binding is safe, nonetheless we ensure `accres` is
-        // correct through the ensure method of the implemented Ensurer trait.
-        let accres = unsafe {
+        // SAFETY: it's safe to pass this strings to the FFI function because it makes copies of it
+        // to return the result so the result will still valid when the call to this method ends
+        // which is when those strings will be dropped.
+        let res = unsafe {
             *ulksys::uplink_config_request_access_with_passphrase(
-                config.as_uplink_c(),
+                config.as_ffi_config(),
                 satellite_addr.as_ptr() as *mut c_char,
                 api_key.as_ptr() as *mut c_char,
                 passphrase.as_ptr() as *mut c_char,
@@ -220,23 +93,120 @@ impl Grant {
             .ensure()
         };
 
-        if let Some(e) = Error::new_uplink(accres.error) {
-            drop_uplink_sys_access_result(accres);
-            Err(e)
-        } else {
-            Ok(Grant {
-                inner: ulksys::UplinkAccessResult {
-                    access: accres.access,
-                    error: ptr::null_mut(),
-                },
-            })
+        Self::from_ffi_access_result(res)
+    }
+
+    /// Creates a Grant instance from the FFI type.
+    ///
+    /// An [`Error::new_uplink` constructor](crate::Error::new_uplink), if `ffi_result` contains a
+    ///  non `NULL` pointer in the `error` field.
+    fn from_ffi_access_result(ffi_result: ulksys::UplinkAccessResult) -> Result<Self> {
+        ffi_result.ensure();
+
+        Error::new_uplink(ffi_result.error).map_or(Ok(Grant { inner: ffi_result }), |err| {
+            // SAFETY: FFI free function doesn't free if the result fields are `NULL` and this
+            // result should only be instantiated through the same FFI.
+            unsafe { ulksys::uplink_free_access_result(ffi_result) };
+            Err(err)
+        })
+    }
+
+    /// Overrides the root encryption key for the prefix in bucket with the encryption key.
+    /// `prefix` must end with slash (i.e. `/`), otherwise it returns an error.
+    ///
+    /// This method is useful for overriding the encryption key in user-specific access grants when
+    /// implementing multitenancy in a single app bucket.
+    /// See relevant information in the general crate documentation.
+    pub fn override_encryption_key(
+        &self,
+        bucket: &str,
+        prefix: &str,
+        encryption_key: &EncryptionKey,
+    ) -> Result<()> {
+        let bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
+        let prefix = helpers::cstring_from_str_fn_arg("prefix", prefix)?;
+
+        // SAFETY: it's safe to pass this strings to the FFI function because it makes copies of it
+        // to return the result so the result will still valid after the call to this method ends
+        // which is when those strings will be dropped.
+        let uc_err = unsafe {
+            ulksys::uplink_access_override_encryption_key(
+                self.inner.access,
+                bucket.as_ptr() as *mut c_char,
+                prefix.as_ptr() as *mut c_char,
+                encryption_key.as_ffi_encryption_key(),
+            )
+        };
+
+        Error::new_uplink(uc_err).map_or(Ok(()), |err| {
+            helpers::drop_uplink_sys_error(uc_err);
+            Err(err)
+        })
+    }
+
+    /// Returns the satellite node URL associated with this access grant.
+    pub fn satellite_address(&self) -> Result<String> {
+        // SAFETY: we have checked that the FFI value attached to this instance is valid at its
+        // construction time.
+        let res = unsafe { ulksys::uplink_access_satellite_address(self.inner.access) };
+
+        string_from_ffi_string_result(res)
+    }
+
+    /// Serializes an access grant such that it can be used to create a [`Self::new()`] instance of
+    /// this type or parsed with other tools.
+    pub fn serialize(&self) -> Result<String> {
+        // SAFETY: we have checked that the FFI value attached to this instance is valid at its
+        // construction time.
+        let res = unsafe { ulksys::uplink_access_serialize(self.inner.access) };
+
+        string_from_ffi_string_result(res)
+    }
+
+    /// Creates a new access grant with specific permissions.
+    ///
+    /// An access grant can only have their existing permissions restricted, and the resulting
+    /// access will only allow for the intersection of all previous share calls in the access
+    /// construction chain.
+    ///
+    /// Prefixes restrict the access grant (and internal encryption information) to only contain
+    /// enough information to allow access to just those prefixes.
+    ///
+    /// To revoke an access grant see [`Project.revoke_access()`](../project/struct.Project.html#method.revoke_access).
+    pub fn share(&self, permission: &Permission, prefixes: Vec<SharePrefix>) -> Result<Grant> {
+        let mut ulk_prefixes: Vec<ulksys::UplinkSharePrefix> = Vec::with_capacity(prefixes.len());
+
+        for sp in prefixes {
+            ulk_prefixes.push(sp.as_ffi_share_prefix())
         }
+
+        // SAFETY: it's safe to pass the vector to the FFI function because it makes copies of it
+        // to return the result so the result will still valid when the call to this method ends
+        // which is when the vector will be dropped.
+        let res = unsafe {
+            *ulksys::uplink_access_share(
+                self.inner.access,
+                permission.to_ffi_permissions(),
+                ulk_prefixes.as_mut_ptr(),
+                ulk_prefixes.len() as i64,
+            )
+            .ensure()
+        };
+
+        Self::from_ffi_access_result(res)
+    }
+
+    /// Returns the FFI representation of this access grant.
+    pub(crate) fn as_ffi_access(&self) -> *mut ulksys::UplinkAccess {
+        self.inner.access
     }
 }
 
 impl Drop for Grant {
     fn drop(&mut self) {
-        drop_uplink_sys_access_result(self.inner);
+        // SAFETY: this type implementation guarantees that the FFI value since an instance is
+        // created until it's dropped.
+        unsafe { ulksys::uplink_free_access_result(self.inner) };
     }
 }
 
@@ -274,10 +244,8 @@ impl<'a> SharePrefix<'a> {
         self.prefix
     }
 
-    /// Returns an `UplinkSharePrefix` with the values of this `SharedPrefix` for interoperating
-    /// with the uplink c-bindings. The pointer fields of the returned struct will be valid as long
-    /// as `self` is.
-    fn as_uplink_c(&self) -> ulksys::UplinkSharePrefix {
+    /// Returns the FFI representation of share prefix.
+    fn as_ffi_share_prefix(&self) -> ulksys::UplinkSharePrefix {
         ulksys::UplinkSharePrefix {
             bucket: self.c_bucket.as_ptr(),
             prefix: self.c_prefix.as_ptr(),
@@ -426,9 +394,8 @@ impl Permission {
         Ok(())
     }
 
-    /// Returns an UplinkPermission with the values of this Permission for interoperating with the
-    /// uplink c-bindings.
-    fn to_uplink_c(&self) -> ulksys::UplinkPermission {
+    /// Returns the FFI representation of this permissions.
+    fn to_ffi_permissions(&self) -> ulksys::UplinkPermission {
         ulksys::UplinkPermission {
             allow_download: self.allow_download,
             allow_upload: self.allow_upload,
@@ -440,44 +407,30 @@ impl Permission {
     }
 }
 
-impl Ensurer for ulksys::UplinkAccessResult {
-    fn ensure(&self) -> &Self {
-        assert!(!self.access.is_null() || !self.error.is_null(), "underlying c-binding returned an invalid UplinkAccessResult; access and error fields are both NULL");
-        assert!((self.access.is_null() && !self.error.is_null())
-            || (!self.access.is_null() && self.error.is_null()),
-            "underlying c-binding returned an invalid UplinkAccessResult; access and error fields are both NOT NULL");
-        self
-    }
-}
+fn string_from_ffi_string_result(ffi_result: ulksys::UplinkStringResult) -> Result<String> {
+    ffi_result.ensure();
 
-impl Ensurer for ulksys::UplinkStringResult {
-    fn ensure(&self) -> &Self {
-        assert!(!self.string.is_null() || !self.error.is_null(), "underlying c-binding returned an invalid UplinkStringResult; string and error fields are both NULL");
-        assert!((self.string.is_null() && !self.error.is_null())
-            || (!self.string.is_null() && self.error.is_null())
-            , "underlying c-binding returned an invalid UplinkStringResult; string and error fields are both NOT NULL");
-        self
+    if let Some(e) = Error::new_uplink(ffi_result.error) {
+        // SAFETY: the FFI release result memory of those fields that they aren't `NULL` otherwise
+        // it doesn't do anything. Anwyay at this point there was an error so at least the `error`
+        // field ins't `NULL`.
+        unsafe { ulksys::uplink_free_string_result(ffi_result) };
+        return Err(e);
     }
-}
 
-/// Calls the associated `free` underlying c-bindings function for releasing the associated
-/// resources of an access result.
-fn drop_uplink_sys_access_result(accres: ulksys::UplinkAccessResult) {
-    // SAFETY: we trust that the underlying c-binding is safe freeing the
-    // memory of a correct UplinkAccessResult value.
+    let cstring;
+    // SAFETY: we have checked that `ffi_result` is valid and it doesn't have an error so the
+    // `string` field isn't `NULL`.
+    // We are taking ownershipt of the `string` field so it's safe to free the memory of
+    // `ffi_result`.
     unsafe {
-        ulksys::uplink_free_access_result(accres);
-    }
-}
+        cstring = CStr::from_ptr(ffi_result.string).to_owned();
+        ulksys::uplink_free_string_result(ffi_result);
+    };
 
-/// Calls the associated `free` underlying c-bindings function for releasing the associated
-/// resources of a string result.
-fn drop_uplink_sys_string_result(strres: ulksys::UplinkStringResult) {
-    // SAFETY: we trust that the underlying c-binding is safe freeing the
-    // memory of a correct UplinkStringResult value.
-    unsafe {
-        ulksys::uplink_free_string_result(strres);
-    }
+    Ok(cstring
+        .into_string()
+        .expect("FFI has returned a c-string with invalid UTF-8 characters"))
 }
 
 #[cfg(test)]
@@ -556,7 +509,7 @@ mod test {
     fn test_grant_request_access_with_config_and_passphrase_invalid_params() {
         {
             // Invalid satelite address.
-            let config = Config::new("rust-bindings", Duration::new(1, 0), None)
+            let config = Config::new("rust-uplink", Duration::new(1, 0), None)
                 .expect("new shouldn't fail when 'user agent' doesn't contain ny nul character");
 
             if let Error::InvalidArguments(error::Args { names, msg }) =
@@ -580,7 +533,7 @@ mod test {
 
         {
             // Invalid API Key.
-            let config = Config::new("rust-bindings", Duration::new(1, 0), None)
+            let config = Config::new("rust-uplink", Duration::new(1, 0), None)
                 .expect("new shouldn't fail when 'user agent' doesn't contain ny nul character");
             if let Error::InvalidArguments(error::Args { names, msg }) =
                 Grant::request_access_with_config_and_passphrase(
@@ -603,7 +556,7 @@ mod test {
 
         {
             // Invalid passphrase.
-            let config = Config::new("rust-bindings", Duration::new(1, 0), None)
+            let config = Config::new("rust-uplink", Duration::new(1, 0), None)
                 .expect("new shouldn't fail when 'user agent' doesn't contain ny nul character");
 
             if let Error::InvalidArguments(error::Args { names, msg }) =
@@ -860,116 +813,5 @@ mod test {
             perm.set_not_after(None).expect("set not after");
             assert_eq!(perm.not_after(), None, "removing not after");
         }
-    }
-
-    /*** Ensurer implementations tests ***/
-    #[test]
-    fn test_ensurer_ulksys_access_result_valid() {
-        {
-            // Has an access.
-            let acc_res = ulksys::UplinkAccessResult {
-                access: &mut ulksys::UplinkAccess { _handle: 0 },
-                error: ptr::null_mut::<ulksys::UplinkError>(),
-            };
-
-            acc_res.ensure();
-        }
-
-        {
-            // Has an error.
-            let acc_res = ulksys::UplinkAccessResult {
-                access: ptr::null_mut::<ulksys::UplinkAccess>(),
-                error: &mut ulksys::UplinkError {
-                    code: 0,
-                    message: ptr::null_mut(),
-                },
-            };
-
-            acc_res.ensure();
-        }
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "underlying c-binding returned an invalid UplinkAccessResult; access and error fields are both NULL"
-    )]
-    fn test_ensurer_ulksys_access_result_invalid_both_null() {
-        let acc_res = ulksys::UplinkAccessResult {
-            access: ptr::null_mut::<ulksys::UplinkAccess>(),
-            error: ptr::null_mut::<ulksys::UplinkError>(),
-        };
-
-        acc_res.ensure();
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "underlying c-binding returned an invalid UplinkAccessResult; access and error fields are both NOT NULL"
-    )]
-    fn test_ensurer_ulksys_access_result_invalid_both_not_null() {
-        let acc_res = ulksys::UplinkAccessResult {
-            access: &mut ulksys::UplinkAccess { _handle: 0 },
-            error: &mut ulksys::UplinkError {
-                code: 0,
-                message: ptr::null_mut(),
-            },
-        };
-
-        acc_res.ensure();
-    }
-
-    #[test]
-    fn test_ensurer_ulksys_string_result_valid() {
-        {
-            // Has a string.
-            let str_res = ulksys::UplinkStringResult {
-                string: CString::new("whatever").unwrap().into_raw(),
-                error: ptr::null_mut::<ulksys::UplinkError>(),
-            };
-
-            str_res.ensure();
-        }
-
-        {
-            // Has an error.
-            let str_res = ulksys::UplinkStringResult {
-                string: ptr::null_mut(),
-                error: &mut ulksys::UplinkError {
-                    code: 0,
-                    message: ptr::null_mut(),
-                },
-            };
-
-            str_res.ensure();
-        }
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "underlying c-binding returned an invalid UplinkStringResult; string and error fields are both NULL"
-    )]
-    fn test_ensurer_ulksys_string_result_invalid_both_null() {
-        let str_res = ulksys::UplinkStringResult {
-            string: ptr::null_mut(),
-            error: ptr::null_mut::<ulksys::UplinkError>(),
-        };
-
-        str_res.ensure();
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "underlying c-binding returned an invalid UplinkStringResult; string and error fields are both NOT NULL"
-    )]
-    fn test_ensurer_ulksys_string_result_invalid_both_not_null() {
-        let str_res = ulksys::UplinkStringResult {
-            string: CString::new("whatever").unwrap().into_raw(),
-            error: &mut ulksys::UplinkError {
-                code: 0,
-                message: ptr::null_mut(),
-            },
-        };
-
-        str_res.ensure();
     }
 }

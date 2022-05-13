@@ -22,36 +22,35 @@ pub fn cstring_from_str_fn_arg(arg_name: &str, arg_val: &str) -> Result<CString,
     })
 }
 
-/// Create a heap allocated `str` from a C string of the specified length.
+/// Create a String from a C string of the specified length.
 ///
 /// The function is unsafe because:
-/// * It doesn't check for the end NULL byte as it doesn't stop if a NULL byte
-///   is before the end of the string.
+/// * It doesn't check for the end NULL byte as it doesn't stop if a NULL byte is before the end of
+///  the string.
 /// * It doesn't check the characters to be UTF-8 valid, if the string contains
-///   invalid UTF-8 bytes then the resulting `str` would have non-deterministic
-///   character value on their position.
-/// * It will read all the bytes of memory region from pointer to length, so
-///   if length is larger than the region, some garbage bytes will be read.
-pub unsafe fn unchecked_ptr_c_char_and_length_to_str(
+///   invalid UTF-8 bytes. Hence the resulting `String` would have non-deterministic character
+///   value on their position.
+/// * It will read all the bytes of memory region from pointer to length, so if length is larger
+///   than the region, some garbage bytes will be read or a runtime panic may happen.
+pub unsafe fn unchecked_ptr_c_char_and_length_to_string(
     c_chars: *const c_char,
     length: usize,
-) -> Box<str> {
+) -> String {
     let mut chars = String::with_capacity(length);
 
     for i in 0..length as isize {
         chars.push(*c_chars.offset(i) as u8 as char)
     }
 
-    chars.into_boxed_str()
+    chars
 }
 
-/// Calls, only if `error` is not null, the associated `free` underlying c-bindings function for
-/// releasing the associated resources with `error` and to free the memory pointed by it.
+/// Calls, only if `error` is not null, the associated `free` FFI function for releasing the
+/// associated resources with `error` and to free the memory pointed by it.
 pub fn drop_uplink_sys_error(error: *mut ulksys::UplinkError) {
     if !error.is_null() {
-        // SAFETY: We just checked that the pointer is not null and we trust
-        // that the underlying c-binding is safe freeing its associated
-        // resources and itself.
+        // SAFETY: We just checked that the pointer is not null and we trust that the FFI is safe
+        // freeing its associated resources and itself.
         unsafe {
             ulksys::uplink_free_error(error);
         }
@@ -170,41 +169,41 @@ pub(crate) mod test {
     }
 
     #[test]
-    fn test_unchecked_ptr_c_char_and_length_to_str() {
-        // SAFETY: The function under test is unsafe so everything is wrapped
-        // inside of unsafe because there is a minimal logic for each test case.
+    fn test_unchecked_ptr_c_char_and_length_to_string() {
+        // SAFETY: The function under test is unsafe so everything is wrapped inside of unsafe
+        // because there is a minimal logic for each test case.
         unsafe {
             {
                 // Case: Exact length.
-                let expected = "Storj Uplink Rust";
+                let expected = String::from("Storj Uplink Rust");
                 let cstr = CStr::from_bytes_with_nul_unchecked(expected.as_bytes());
                 let chars = cstr.as_ptr();
                 assert_eq!(
-                    unchecked_ptr_c_char_and_length_to_str(chars, expected.len()).as_ref(),
+                    unchecked_ptr_c_char_and_length_to_string(chars, expected.len()),
                     expected,
                     "str value doesn't match"
                 );
             }
             {
                 // Case: Exact length and with NULL terminated char.
-                let expected = "Storj Uplink Rust\0";
+                let expected = String::from("Storj Uplink Rust\0");
                 let cstr = CStr::from_bytes_with_nul_unchecked(expected.as_bytes());
                 let chars = cstr.as_ptr();
 
                 assert_eq!(
-                    unchecked_ptr_c_char_and_length_to_str(chars, expected.len()).as_ref(),
+                    unchecked_ptr_c_char_and_length_to_string(chars, expected.len()).as_ref(),
                     expected,
                     "str value doesn't match"
                 );
             }
             {
                 // Case: Exact length and with interior NULL chars.
-                let expected = "Storj Uplink\0 Ru\0st";
+                let expected = String::from("Storj Uplink\0 Ru\0st");
                 let cstr = CStr::from_bytes_with_nul_unchecked(expected.as_bytes());
                 let chars = cstr.as_ptr();
 
                 assert_eq!(
-                    unchecked_ptr_c_char_and_length_to_str(chars, expected.len()).as_ref(),
+                    unchecked_ptr_c_char_and_length_to_string(chars, expected.len()).as_ref(),
                     expected,
                     "str value doesn't match"
                 );
@@ -212,31 +211,33 @@ pub(crate) mod test {
             {
                 // Case: Exact length and with interior and interior and terminated
                 // NULL chars.
-                let expected = "Storj Uplink\0 Ru\0st\0";
+                let expected = String::from("Storj Uplink\0 Ru\0st\0");
                 let cstr = CStr::from_bytes_with_nul_unchecked(expected.as_bytes());
                 let chars = cstr.as_ptr();
 
                 assert_eq!(
-                    unchecked_ptr_c_char_and_length_to_str(chars, expected.len()).as_ref(),
+                    unchecked_ptr_c_char_and_length_to_string(chars, expected.len()).as_ref(),
                     expected,
                     "str value doesn't match"
                 );
             }
             {
                 // Case: Shorter length.
-                let expected = "Storj Uplink Rust";
-                let cstr = CStr::from_bytes_with_nul_unchecked(expected.as_bytes());
+                let passed = String::from("Storj Uplink Rust");
+                let cstr = CStr::from_bytes_with_nul_unchecked(passed.as_bytes());
                 let chars = cstr.as_ptr();
+                let mut expected = passed.clone();
+                expected.truncate(passed.len() - 1);
 
                 assert_eq!(
-                    unchecked_ptr_c_char_and_length_to_str(chars, expected.len() - 1).as_ref(),
-                    &expected[..expected.len() - 1],
+                    unchecked_ptr_c_char_and_length_to_string(chars, passed.len() - 1),
+                    expected,
                     "str value doesn't match"
                 );
             }
             {
                 // Case: Larger length.
-                let expected = "Storj Uplink Rust OUT";
+                let expected = String::from("Storj Uplink Rust OUT");
                 let cstr = CStr::from_bytes_with_nul_unchecked(expected.as_bytes());
                 let chars = cstr.as_ptr();
 
@@ -244,21 +245,21 @@ pub(crate) mod test {
                 // firsts 17 characters, the function is receiving a greater length
                 // value that it should be so it reads the continuous memory.
                 assert_eq!(
-                    unchecked_ptr_c_char_and_length_to_str(chars, expected.len()).as_ref(),
+                    unchecked_ptr_c_char_and_length_to_string(chars, expected.len()),
                     expected,
                     "str value doesn't match"
                 );
             }
             {
                 // Case: Invalid UTF-8
-                let expected = "Storj Uplink \u{FFFD} Rust";
+                let expected = String::from("Storj Uplink \u{FFFD} Rust");
                 let cstr = CStr::from_bytes_with_nul_unchecked(expected.as_bytes());
                 let chars = cstr.as_ptr();
 
                 // The values aren't equal because non valid UTF-8 bytes produce a
                 // non-deterministic output.
                 assert_ne!(
-                    unchecked_ptr_c_char_and_length_to_str(chars, expected.len()).as_ref(),
+                    unchecked_ptr_c_char_and_length_to_string(chars, expected.len()),
                     expected,
                 );
             }

@@ -21,15 +21,13 @@ impl<'a> CommitUpload<'a> {
         Self { custom_metadata }
     }
 
-    /// Returns the underlying c-bindings representation of the options.
-    /// The returned options' pointers are valid for as long as the `custom_metadata` shared
-    /// reference received by [`Self::new`].
+    /// Returns the FFI representation of the options.
     ///
-    /// It takes a mutable reference because [`metadata::Custom.to_uplink_c`] requires a mutable
+    /// It takes a mutable reference because [`metadata::Custom.to_ffi_c`] requires a mutable
     /// reference.
-    pub(crate) fn to_uplink_c(&mut self) -> ulksys::UplinkCommitUploadOptions {
+    pub(crate) fn to_ffi_commit_upload_options(&mut self) -> ulksys::UplinkCommitUploadOptions {
         ulksys::UplinkCommitUploadOptions {
-            custom_metadata: self.custom_metadata.to_uplink_c(),
+            custom_metadata: self.custom_metadata.to_ffi_custom_metadata(),
         }
     }
 }
@@ -47,8 +45,8 @@ pub struct Download {
 }
 
 impl Download {
-    /// Returns the underlying c-bindings representation of the options.
-    pub(crate) fn to_uplink_c(&self) -> ulksys::UplinkDownloadOptions {
+    /// Returns the FFI representation of the options.
+    pub(crate) fn to_ffi_download_options(&self) -> ulksys::UplinkDownloadOptions {
         ulksys::UplinkDownloadOptions {
             offset: self.offset,
             length: self.length,
@@ -59,8 +57,8 @@ impl Download {
 /// Options for listing buckets.
 #[derive(Default)]
 pub struct ListBuckets {
-    /// C representation of `cursor` for providing it to the underlying c-bindings and guards its
-    /// lifetime until `self` gets dropped.
+    /// C representation of `cursor` for providing it to the FFI and guards its lifetime until
+    /// `self` gets dropped.
     inner_cursor: CString,
 }
 
@@ -72,9 +70,8 @@ impl ListBuckets {
         Ok(Self { inner_cursor })
     }
 
-    /// Returns the underlying c-bindings representation of the options.
-    /// The returned options' pointers are valid for as long as `self`.
-    pub(crate) fn to_uplink_c(&self) -> ulksys::UplinkListBucketsOptions {
+    /// Returns the FFI representation of the options.
+    pub(crate) fn to_ffi_list_buckets_options(&self) -> ulksys::UplinkListBucketsOptions {
         ulksys::UplinkListBucketsOptions {
             cursor: self.inner_cursor.as_ptr(),
         }
@@ -86,16 +83,16 @@ impl ListBuckets {
 pub struct ListObjects<'a> {
     /// Only list objects with this key prefix. When not empty, it must ends with slash.
     prefix: &'a str,
-    /// C representation of `prefix` for providing it to the underlying c-bindings and guards its
-    /// lifetime until `self` gets dropped.
+    /// C representation of `prefix` for providing it to the FFI and guards its lifetime until
+    /// `self` gets dropped.
     inner_prefix: CString,
     /// Specifies the starting position of the iterator by offsetting from the first object of the
     /// list.
     /// The first item of the list is the one after the cursor.
     /// The list of objects depends on the `prefix`.
     cursor: &'a str,
-    /// C representation of `cursor` for providing it to the underlying c-bindings and guards its
-    /// lifetime until `self` gets dropped.
+    /// C representation of `cursor` for providing it to the FFI and guards its lifetime until
+    /// `self` gets dropped.
     inner_cursor: CString,
     /// Iterate the objects without collapsing prefixes.
     pub recursive: bool,
@@ -159,8 +156,7 @@ impl<'a> ListObjects<'a> {
     }
 
     /// Creates options for listing objects with only verifying that `prefix` and `cursor` don't
-    /// contain any null byte (0 byte), which are essential for working fine with the underlying
-    /// c-bindings.
+    /// contain any null byte (0 byte), which are essential for working fine with the FFI.
     ///
     /// This is a convenient constructor to be used by the public constructors which impose more
     /// contains  on `prefix` and `cursor`.
@@ -177,9 +173,8 @@ impl<'a> ListObjects<'a> {
         })
     }
 
-    /// Returns the underlying c-binding representation of the options.
-    /// The returned options' pointer are valid as long as `self`.
-    pub(crate) fn to_uplink_c(&self) -> ulksys::UplinkListObjectsOptions {
+    /// Returns the FFI representation of the options.
+    pub(crate) fn to_ffi_list_objects_options(&self) -> ulksys::UplinkListObjectsOptions {
         ulksys::UplinkListObjectsOptions {
             prefix: self.inner_prefix.as_ptr(),
             cursor: self.inner_cursor.as_ptr(),
@@ -195,16 +190,16 @@ impl<'a> ListObjects<'a> {
 pub struct ListUploads<'a> {
     /// Only list uncommitted uploads with this key prefix. When not empty, it must ends with slash.
     prefix: &'a str,
-    /// C representation of `prefix` for providing it to the underlying
-    /// c-bindings and guards its lifetime until `self` gets dropped.
+    /// C representation of `prefix` for providing it to the FFI and guards its lifetime until
+    /// `self` gets dropped.
     inner_prefix: CString,
     /// Specifies the starting position of the iterator by offsetting from the first object of the
     /// list.
     /// The first item of the list is the one after the cursor.
     /// The list of objects depends on the `prefix`.
     cursor: &'a str,
-    /// C representation of `cursor` for providing it to the underlying c-bindings and guards its
-    /// lifetime until `self` gets dropped.
+    /// C representation of `cursor` for providing it to the FFI and guards its lifetime until
+    /// `self` gets dropped.
     inner_cursor: CString,
     /// Iterate the objects without collapsing prefixes.
     pub recursive: bool,
@@ -268,8 +263,7 @@ impl<'a> ListUploads<'a> {
     }
 
     /// Creates options for listing uncommitted with only verify that `prefix` and `cursor` don't
-    /// contain any null byte (0 byte), which are essential for working fine with the underlying
-    /// c-bindings.
+    /// contain any null byte (0 byte), which are essential for working fine with the FFI.
     ///
     /// This is a convenient constructor to be used by the public constructors which impose more
     /// contains  on `prefix` and `cursor`.
@@ -286,9 +280,8 @@ impl<'a> ListUploads<'a> {
         })
     }
 
-    /// Returns the underlying c-binding representation of the options.
-    /// The returned options' pointer are valid as long as `self`.
-    pub(crate) fn to_uplink_c(&self) -> ulksys::UplinkListUploadsOptions {
+    /// Returns the FFI representation of the options.
+    pub(crate) fn to_ffi_list_uploads_options(&self) -> ulksys::UplinkListUploadsOptions {
         ulksys::UplinkListUploadsOptions {
             prefix: self.inner_prefix.as_ptr(),
             cursor: self.inner_cursor.as_ptr(),
@@ -311,8 +304,8 @@ pub struct ListUploadParts {
 }
 
 impl ListUploadParts {
-    /// Returns the underlying c-binding representation of the options.
-    pub(crate) fn to_uplink_c(&self) -> ulksys::UplinkListUploadPartsOptions {
+    /// Returns the FFI representation of the options.
+    pub(crate) fn to_ffi_list_upload_parts_options(&self) -> ulksys::UplinkListUploadPartsOptions {
         ulksys::UplinkListUploadPartsOptions {
             cursor: self.cursor,
         }
@@ -325,7 +318,7 @@ pub struct MoveObject {}
 
 impl MoveObject {
     /// The returned options' pointer are valid as long as `self`.
-    pub(crate) fn to_uplink_c(&self) -> ulksys::UplinkMoveObjectOptions {
+    pub(crate) fn to_ffi_move_object_options(&self) -> ulksys::UplinkMoveObjectOptions {
         ulksys::UplinkMoveObjectOptions {}
     }
 }
@@ -341,8 +334,8 @@ pub struct Upload {
 }
 
 impl Upload {
-    /// Returns the underlying c-bindings representation of the options.
-    pub(crate) fn to_uplink_c(&self) -> ulksys::UplinkUploadOptions {
+    /// Returns the FFI representation of the options.
+    pub(crate) fn to_ffi_upload_options(&self) -> ulksys::UplinkUploadOptions {
         let expires = self.expires.unwrap_or(Duration::ZERO);
 
         ulksys::UplinkUploadOptions {
@@ -358,8 +351,10 @@ impl Upload {
 pub struct UploadObjectMetadata {}
 
 impl UploadObjectMetadata {
-    /// Returns the underlying c-bindings representation of the options.
-    pub(crate) fn to_uplink_c(&self) -> ulksys::UplinkUploadObjectMetadataOptions {
+    /// Returns the FFI representation of the options.
+    pub(crate) fn to_ffi_upload_object_metadata_options(
+        &self,
+    ) -> ulksys::UplinkUploadObjectMetadataOptions {
         ulksys::UplinkUploadObjectMetadataOptions {}
     }
 }

@@ -4,7 +4,9 @@ pub mod upload;
 
 pub use upload::Upload;
 
-use crate::{error::BoxError, metadata, Ensurer, Error, Result};
+use crate::error::BoxError;
+use crate::uplink_c::Ensurer;
+use crate::{metadata, Error, Result};
 
 use std::ffi::CStr;
 
@@ -23,36 +25,35 @@ pub struct Object<'a> {
 }
 
 impl Object<'_> {
-    /// Creates new instance from the underlying c-binding representation.
+    /// Creates new instance from the FFI representation.
     ///
-    /// It returns an error if `uc_obj` contains a key with invalid UTF-8 characters or
-    /// [`metadata::Custom::from_uplink_c`] return an error.
-    ///
-    /// The caller can free the `uc_obj` after this call without affecting the returned value.
-    ///
-    /// It panics if `uc_part` is NULL.
-    pub(crate) fn from_uplink_c(uc_obj: *mut ulksys::UplinkObject) -> Result<Self> {
+    /// An [`Error::Internal`](crate::Error::Internal) if `uc_obj`'s key contains invalid UTF-8
+    /// characters or [`metadata::Custom::with_ffi_custom_metadata`] return an error.
+    fn from_ffi_object(uc_obj: *mut ulksys::UplinkObject) -> Result<Self> {
         assert!(!uc_obj.is_null(), "BUG: `uc_obj` argument cannot be NULL");
+
+        let uc_obj_ptr = uc_obj;
+        // SAFETY: We have checked just above that the pointer isn't NULL.
+        let uc_obj = unsafe { *uc_obj_ptr };
+        uc_obj.ensure();
 
         let key: &str;
         let is_prefix: bool;
         let metadata_system: metadata::System;
         let metadata_custom: metadata::Custom;
-        // SAFETY: we check before this block that pointer isn't NULL and inside of this block we
-        // ensure that `uc_obj` doesn't have fields with NULL pointers through the `ensure` method
-        // of the implemented `Ensurer` trait, and we also trust the underlying c-binding is safe
-        // freeing the memory.
+        // SAFETY: we have check that the `uc_obj` doesn't have fields with NULL pointers through
+        // the `ensure` method.
         unsafe {
-            (*uc_obj).ensure();
-            key = CStr::from_ptr((*uc_obj).key).to_str().map_err(|err| {
-                Error::new_internal_with_inner(
-                    "underlying-c binding returned an invalid object's key",
+            key = CStr::from_ptr(uc_obj.key).to_str().map_err(|err| {
+                Error::new_internal(
+                    "FFI returned an invalid object's key; it contains invalid UTF-8 characters",
                     BoxError::from(err),
                 )
             })?;
-            metadata_custom = metadata::Custom::from_uplink_c(&(*uc_obj).custom);
-            metadata_system = metadata::System::from_uplink_c(&(*uc_obj).system);
-            is_prefix = (*uc_obj).is_prefix;
+            metadata_custom = metadata::Custom::with_ffi_custom_metadata(&uc_obj.custom);
+            metadata_system = metadata::System::with_ffi_system_metadata(&uc_obj.system);
+            is_prefix = uc_obj.is_prefix;
+            ulksys::uplink_free_object(uc_obj_ptr);
         }
 
         Ok(Self {
@@ -62,31 +63,68 @@ impl Object<'_> {
             metadata_custom,
         })
     }
-}
 
-impl Ensurer for ulksys::UplinkObject {
-    fn ensure(&self) -> &Self {
-        assert!(
-            !self.key.is_null(),
-            "underlying c-binding returned an invalid UplinkObject; key field is NULL",
-        );
+    /// Creates a new instance from the FFI representation for an object's result.
+    ///
+    /// It returns the following errors:
+    /// * an [`Error::new_uplink` constructor](crate::Error::new_uplink), if `uc_result` contains a
+    ///   non `NULL` pointer in the `error` field.
+    /// * an [`Error::Internal`](crate::Error::Internal) if `uc_result.object`'s key contains
+    ///   invalid UTF-8 characters or [`metadata::Custom::with_ffi_custom_metadata`] return an
+    ///   error.
+    pub(crate) fn from_ffi_object_result(uc_result: ulksys::UplinkObjectResult) -> Result<Self> {
+        uc_result.ensure();
 
-        self
+        if let Some(err) = Error::new_uplink(uc_result.error) {
+            // SAFETY: we trust the FFI is safe freeing the memory of a valid pointer.
+            unsafe { ulksys::uplink_free_object_result(uc_result) };
+            return Err(err);
+        }
+
+        // At this point we don't need to free the `uc_result` because the following function free
+        // the `info` pointer and the `error` pointer is `NULL`, and that's what the free function
+        // for the `uc_result` does (i.e. call a free specific function for each pointer returning
+        // without doing anything if it's `NULL`).
+        Self::from_ffi_object(uc_result.object)
+    }
+
+    /// Creates a new instance from the FFI representation for a commit upload's result.
+    ///
+    /// It returns the following errors:
+    /// * an [`Error::new_uplink` constructor](crate::Error::new_uplink), if `uc_result` contains a
+    ///   non `NULL` pointer in the `error` field.
+    /// * an [`Error::Internal`](crate::Error::Internal) if `uc_result.object`'s key contains
+    ///   invalid UTF-8 characters or [`metadata::Custom::with_ffi_custom_metadata`] return an
+    ///   error.
+    pub(crate) fn from_ffi_commit_upload_result(
+        uc_result: ulksys::UplinkCommitUploadResult,
+    ) -> Result<Self> {
+        uc_result.ensure();
+
+        if let Some(err) = Error::new_uplink(uc_result.error) {
+            // SAFETY: we trust the FFI is safe freeing the memory of a valid pointer.
+            unsafe { ulksys::uplink_free_commit_upload_result(uc_result) };
+            return Err(err);
+        }
+
+        // At this point we don't need to free the `uc_result` because the following function free
+        // the `info` pointer and the `error` pointer is `NULL`, and that's what the free function
+        // for the `uc_result` does (i.e. call a free specific function for each pointer returning
+        // without doing anything if it's `NULL`).
+        Self::from_ffi_object(uc_result.object)
     }
 }
 
 /// Iterates over a collection of objects' information.
 pub struct Iterator {
-    /// The object iterator type of the underlying c-bindings Rust crate that an instance of this
-    /// struct represents and guards its life time until the instance drops.
+    /// The object iterator type of the FFI that an instance of this struct represents and guards
+    /// its lifetime until the instance drops.
     inner: *mut ulksys::UplinkObjectIterator,
 }
 
 impl Iterator {
-    /// Creates a new instance from the type exposed by the uplink c-bindings.
-    ///
-    /// It panics if `uc_iterator` is NULL.
-    pub(crate) fn from_uplink_c(uc_iterator: *mut ulksys::UplinkObjectIterator) -> Self {
+    /// Creates a new instance from the type exposed by the FFI.
+    pub(crate) fn from_ffi_object_iterator(uc_iterator: *mut ulksys::UplinkObjectIterator) -> Self {
         assert!(
             !uc_iterator.is_null(),
             "BUG: `uc_iterator` argument cannot be NULL"
@@ -100,25 +138,25 @@ impl<'a> std::iter::Iterator for &'a Iterator {
     type Item = Result<Object<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // SAFETY: we trust that the underlying c-bindings functions don't panic when called with
-        // an instance returned by them and they don't return any invalid memory references or
-        // `null` if next returns `true`.
+        // SAFETY: we trust that the FFI functions don't panic when called with an instance returned
+        // by them and they don't return any invalid memory references or `null` if next returns
+        // `true`.
         unsafe {
             if !ulksys::uplink_object_iterator_next(self.inner) {
                 let uc_error = ulksys::uplink_object_iterator_err(self.inner);
                 return Error::new_uplink(uc_error).map(Err);
             }
 
-            Some(Object::from_uplink_c(ulksys::uplink_object_iterator_item(
-                self.inner,
-            )))
+            Some(Object::from_ffi_object(
+                ulksys::uplink_object_iterator_item(self.inner),
+            ))
         }
     }
 }
 
 impl Drop for Iterator {
     fn drop(&mut self) {
-        // SAFETY: we trust that the underlying c-binding is safe freeing the memory of a correct
+        // SAFETY: we trust that the FFI is safe freeing the memory of a correct
         // `UplinkObjectIterator` pointer.
         unsafe {
             ulksys::uplink_free_object_iterator(self.inner);
@@ -128,43 +166,43 @@ impl Drop for Iterator {
 
 /// Represents a download object operation from Storj DCS network.
 pub struct Download {
-    /// The download type of the underlying c-bindings than an instance of this struct represents
-    /// and guards its life time until the instance drops.
+    /// The download type of the FFI than an instance of this struct represents and guards its
+    /// lifetime until the instance drops.
     ///
     /// It's an access result
     inner: ulksys::UplinkDownloadResult,
 }
 
 impl Download {
-    /// Creates a new instance from the underlying c-bindings representation. The parameter is an
-    /// `UplinkDownloadResult` because the it's the type that holds a `UplinkDownload` pointer and
-    /// the function that frees the memory requires this type.
+    /// Creates a new instance from the FFI representation.
     ///
-    /// It returns an error if `uc_download` contains a non NULL pointer in the `error` field.
-    ///
-    /// This function panics if `uc_download` is invalid, i.e. `download` and `error` fields are
-    /// both NULL or not NULL>
-    pub(crate) fn from_uplink_c(uc_download: ulksys::UplinkDownloadResult) -> Result<Self> {
-        // Ensure it's valid.
-        uc_download.ensure();
+    /// It returns an error, through the
+    /// [`Error::new_uplink` constructor](crate::Error::new_uplink), if `uc_result` contains a non
+    /// `NULL` pointer in the `error` field.
+    pub(crate) fn from_ffi_download_result(
+        uc_result: ulksys::UplinkDownloadResult,
+    ) -> Result<Self> {
+        uc_result.ensure();
 
-        if let Some(err) = Error::new_uplink(uc_download.error) {
+        if let Some(err) = Error::new_uplink(uc_result.error) {
             return Err(err);
         }
 
-        Ok(Self { inner: uc_download })
+        Ok(Self { inner: uc_result })
     }
 
     /// Returns the last information about the object.
+    ///
+    /// It returns if FFI returns an error when retrieving the information.
     pub fn info(&self) -> Result<Object> {
-        // SAFETY: We trust the underlying c-bindings is behaving correctly when passing a valid
-        // `UplinkDownload` instance.
+        // SAFETY: We trust the FFI is behaving correctly when passing a valid `UplinkDownload`
+        // instance.
         let obj_res = unsafe { ulksys::uplink_download_info(self.inner.download) };
         if let Some(err) = Error::new_uplink(obj_res.error) {
             return Err(err);
         }
 
-        Object::from_uplink_c(obj_res.object)
+        Object::from_ffi_object(obj_res.object)
     }
 }
 
@@ -176,8 +214,8 @@ impl std::io::Read for Download {
     /// an [`Error::Uplink`].
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let bp = buf.as_mut_ptr();
-        // SAFETY: we trust the underlying c-bindings of dealing with a correct `UplinkDownload`
-        // instance and an allocated buffer.
+        // SAFETY: we trust the FFI of dealing with a correct `UplinkDownload` instance and an
+        // allocated buffer.
         let read_res = unsafe {
             ulksys::uplink_download_read(self.inner.download, bp.cast(), buf.len() as u64)
         };
@@ -193,8 +231,8 @@ impl std::io::Read for Download {
 
 impl Drop for Download {
     fn drop(&mut self) {
-        // SAFETY: we trust that the underlying c-bindings is doing correct operations when closing
-        // and freeing a correctly created `UplinkDownloadResult` value.
+        // SAFETY: we trust that the FFI is doing correct operations when closing and freeing a
+        // correctly created `UplinkDownloadResult` value.
         unsafe {
             // At this point we cannot do anything about the error, so discarded.
             // TODO: find out if retrying the operation it's the right thing to do for some of the
@@ -202,104 +240,5 @@ impl Drop for Download {
             let _ = ulksys::uplink_close_download(self.inner.download);
             ulksys::uplink_free_download_result(self.inner);
         }
-    }
-}
-
-impl Ensurer for ulksys::UplinkObjectResult {
-    fn ensure(&self) -> &Self {
-        assert!(!self.object.is_null() || !self.error.is_null(), "underlying c-bindings returned an invalid UplinkObjectResult; object and error fields are both NULL");
-        assert!((self.object.is_null() && !self.error.is_null())
-            || (!self.object.is_null() && self.error.is_null())
-            , "underlying c-bindings returned an invalid UplinkObjectResult; object and error fields are both NOT NULL");
-        self
-    }
-}
-
-impl Ensurer for ulksys::UplinkDownloadResult {
-    fn ensure(&self) -> &Self {
-        assert!(!self.download.is_null() || !self.error.is_null(), "underlying c-bindings returned an invalid UplinkDownloadResult; download and error fields are both NULL");
-        assert!((self.download.is_null() && !self.error.is_null())
-            || (!self.download.is_null() && self.error.is_null())
-            , "underlying c-bindings returned an invalid UplinkDownloadResult; download and error fields are both NOT NULL");
-        self
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    use std::ptr;
-
-    use uplink_sys as ulksys;
-
-    #[test]
-    #[should_panic(
-        expected = "underlying c-bindings returned an invalid UplinkObjectResult; object and error fields are both NULL"
-    )]
-    fn test_ensurer_uplink_object_result_invalid_both_null() {
-        let upload_res = ulksys::UplinkObjectResult {
-            object: ptr::null_mut(),
-            error: ptr::null_mut(),
-        };
-
-        upload_res.ensure();
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "underlying c-bindings returned an invalid UplinkObjectResult; object and error fields are both NOT NULL"
-    )]
-    fn test_ensurer_uplink_object_result_invalid_both_not_null() {
-        let upload_res = ulksys::UplinkObjectResult {
-            object: &mut ulksys::UplinkObject {
-                key: ptr::null_mut(),
-                is_prefix: false,
-                system: ulksys::UplinkSystemMetadata {
-                    created: 0,
-                    expires: 0,
-                    content_length: 0,
-                },
-                custom: ulksys::UplinkCustomMetadata {
-                    entries: ptr::null_mut(),
-                    count: 0,
-                },
-            },
-            error: &mut ulksys::UplinkError {
-                code: 0,
-                message: ptr::null_mut(),
-            },
-        };
-
-        upload_res.ensure();
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "underlying c-bindings returned an invalid UplinkDownloadResult; download and error fields are both NULL"
-    )]
-    fn test_ensurer_uplink_upload_result_invalid_both_null() {
-        let upload_res = ulksys::UplinkDownloadResult {
-            download: ptr::null_mut(),
-            error: ptr::null_mut(),
-        };
-
-        upload_res.ensure();
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "underlying c-bindings returned an invalid UplinkDownloadResult; download and error fields are both NOT NULL"
-    )]
-    fn test_ensurer_uplink_upload_result_invalid_both_not_null() {
-        let upload_res = ulksys::UplinkDownloadResult {
-            download: &mut ulksys::UplinkDownload { _handle: 0 },
-            error: &mut ulksys::UplinkError {
-                code: 0,
-                message: ptr::null_mut(),
-            },
-        };
-
-        upload_res.ensure();
     }
 }

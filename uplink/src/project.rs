@@ -5,6 +5,7 @@ pub mod options;
 use crate::access::Grant;
 use crate::config::Config;
 use crate::object::upload;
+use crate::uplink_c::Ensurer;
 use crate::{bucket, error, helpers, metadata, object, Bucket, Error, Object, Result};
 
 use std::os::raw::c_char;
@@ -14,8 +15,8 @@ use uplink_sys as ulksys;
 
 /// Provides access to manage buckets and objects.
 pub struct Project {
-    /// The project type of the underlying c-bindings than an instance of this struct represents and
-    /// guards its life time until this instance drops.
+    /// The project type of the FFI that an instance of this struct represents and guards its life
+    /// time until this instance drops.
     ///
     /// It's a project result because it's the one that holds the project and allows to free its
     /// memory.
@@ -25,18 +26,17 @@ pub struct Project {
 impl Project {
     /// Opens a project with the specified access grant.
     pub fn open(grant: Grant) -> Self {
-        // SAFETY: we trust the underlying c-binding is behaving correctly when called with correct
+        // SAFETY: we trust the FFI is behaving correctly when called with correct
         // value.
-        let inner = unsafe { ulksys::uplink_open_project(grant.as_uplink_c()) };
+        let inner = unsafe { ulksys::uplink_open_project(grant.as_ffi_access()) };
         Self { inner }
     }
 
     /// Opens a project with the specified access grant and configuration.
     pub fn open_with_config(grant: Grant, config: &Config) -> Self {
-        // SAFETY: we trust the underlying c-binding is behaving correctly when called with correct
-        // value.
+        // SAFETY: we trust the FFI is behaving correctly when called with correct value.
         let inner = unsafe {
-            ulksys::uplink_config_open_project(config.as_uplink_c(), grant.as_uplink_c())
+            ulksys::uplink_config_open_project(config.as_ffi_config(), grant.as_ffi_access())
         };
         Self { inner }
     }
@@ -49,8 +49,7 @@ impl Project {
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
         let c_upload_id = helpers::cstring_from_str_fn_arg("upload_id", upload_id)?;
 
-        // SAFETY: we trust the underlying c-binding is behaving correctly when called with correct
-        // value.
+        // SAFETY: we trust the FFI is behaving correctly when called with correct value.
         let uc_err = unsafe {
             ulksys::uplink_abort_upload(
                 self.inner.project,
@@ -86,16 +85,15 @@ impl Project {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
 
-        // SAFETY: we get the c-bindings representation of the opts if it isn't `None` then we get
-        // a mutable reference to it but we use the reference only inside of the scope, hence we
-        // are always referencing it during its lifetime that the scope establishes.
-        // For the rest, we trust the underlying c-binding is behaving correctly when called with
-        // correct value.
+        // SAFETY: we get the FFI representation of the opts if it isn't `None` then we get a
+        // mutable reference to it but we use the reference only inside of the scope, hence we are
+        // always referencing it during its lifetime that the scope establishes.
+        // For the rest, we trust the FFI is behaving correctly when called with correct value.
         let uc_res = unsafe {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_uplink_c();
+                uc_opts = o.to_ffi_upload_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
@@ -107,22 +105,13 @@ impl Project {
             )
         };
 
-        let res = if let Some(err) = Error::new_uplink(uc_res.error) {
-            Err(err)
-        } else {
-            Ok(upload::Info::from_uplink_c(uc_res.info))
-        };
-
-        // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-        // itself.
-        unsafe { ulksys::uplink_free_upload_info_result(uc_res) };
-        res
+        upload::Info::from_ffi_upload_info_result(uc_res)
     }
 
     /// Commits a multipart upload with `upload_id` to `bucket` and `key` with optional options.
     ///
     /// `opts` wraps a mutable reference because the [`options::CommitUpload`] requires a mutable
-    /// reference to obtain its underlying c-bindings representation.
+    /// reference to obtain its FFI representation.
     ///
     /// The `upload_id` is an upload identifier that [`Self::begin_upload`] has returned.
     pub fn commit_upload(
@@ -136,16 +125,15 @@ impl Project {
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
         let c_upload_id = helpers::cstring_from_str_fn_arg("upload_id", upload_id)?;
 
-        // SAFETY: we get the c-bindings representation of the opts if it isn't `None` then we get
-        // a mutable reference to it but we use the reference only inside of the scope, hence we
-        // are always referencing it during its lifetime that the scope establishes.
-        // For the rest, we trust the underlying c-binding is behaving correctly when called with
-        // correct value.
+        // SAFETY: we get the FFI representation of the opts if it isn't `None` then we get a
+        // mutable reference to it but we use the reference only inside of the scope, hence we are
+        // always referencing it during its lifetime that the scope establishes.
+        // For the rest, we trust the FFI is behaving correctly when called with correct value.
         let uc_res = unsafe {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_uplink_c();
+                uc_opts = o.to_ffi_commit_upload_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
@@ -158,16 +146,7 @@ impl Project {
             )
         };
 
-        let res = if let Some(err) = Error::new_uplink(uc_res.error) {
-            Err(err)
-        } else {
-            Object::from_uplink_c(uc_res.object)
-        };
-
-        // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-        // itself.
-        unsafe { ulksys::uplink_free_commit_upload_result(uc_res) };
-        res
+        Object::from_ffi_commit_upload_result(uc_res)
     }
 
     /// Creates a new bucket.
@@ -177,18 +156,19 @@ impl Project {
     pub fn create_bucket(&self, bucket: &str) -> Result<(Bucket, bool)> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
 
-        // SAFETY: we trust the underlying c-binding is behaving correctly when called with correct
-        // value.
+        // SAFETY: we trust the FFI is behaving correctly when called with correct value.
         let uc_res = unsafe {
             ulksys::uplink_create_bucket(self.inner.project, c_bucket.as_ptr() as *mut c_char)
         };
+        uc_res.ensure();
 
         let created = if let Some(err) = Error::new_uplink(uc_res.error) {
             if let Error::Uplink(error::Uplink::BucketAlreadyExists(_)) = &err {
                 false
             } else {
-                // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-                // itself.
+                // SAFETY: the `Error` constructor doesn't take ownership of the FFI error pointer
+                // so it's still allocated at this point and we trust the FFI of freeing memory of
+                // pointers allocated by itself.
                 unsafe { ulksys::uplink_free_bucket_result(uc_res) };
                 return Err(err);
             }
@@ -196,12 +176,8 @@ impl Project {
             true
         };
 
-        let bucket_info = Bucket::from_uplink_c(uc_res.bucket)?;
-
-        // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-        // itself.
-        unsafe { ulksys::uplink_free_bucket_result(uc_res) };
-        Ok((bucket_info, created))
+        let bucket = Bucket::from_ffi_bucket(uc_res.bucket)?;
+        Ok((bucket, created))
     }
 
     /// Deletes a bucket.
@@ -211,30 +187,19 @@ impl Project {
     pub fn delete_bucket(&self, bucket: &str) -> Result<Bucket> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
 
-        // SAFETY: we trust the underlying c-binding is behaving correctly when called with correct
-        // value.
+        // SAFETY: we trust the FFI is behaving correctly when called with correct value.
         let uc_res = unsafe {
             ulksys::uplink_delete_bucket(self.inner.project, c_bucket.as_ptr() as *mut c_char)
         };
 
-        let res = if let Some(err) = Error::new_uplink(uc_res.error) {
-            Err(err)
-        } else {
-            Bucket::from_uplink_c(uc_res.bucket)
-        };
-
-        // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-        // itself.
-        unsafe { ulksys::uplink_free_bucket_result(uc_res) };
-        res
+        Bucket::from_ffi_bucket_result(uc_res)
     }
 
     /// Deletes a bucket and all its objects.
     pub fn delete_bucket_with_objects(&self, bucket: &str) -> Result<Bucket> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
 
-        // SAFETY: we trust the underlying c-binding is behaving correctly when called with correct
-        // value.
+        // SAFETY: we trust the FFI is behaving correctly when called with correct value.
         let uc_res = unsafe {
             ulksys::uplink_delete_bucket_with_objects(
                 self.inner.project,
@@ -242,16 +207,7 @@ impl Project {
             )
         };
 
-        let res = if let Some(err) = Error::new_uplink(uc_res.error) {
-            Err(err)
-        } else {
-            Bucket::from_uplink_c(uc_res.bucket)
-        };
-
-        // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-        // itself.
-        unsafe { ulksys::uplink_free_bucket_result(uc_res) };
-        res
+        Bucket::from_ffi_bucket_result(uc_res)
     }
 
     /// Deletes the object inside of `bucket` and referenced with `key`.
@@ -259,8 +215,7 @@ impl Project {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
 
-        // SAFETY: we trust the underlying c-binding is behaving correctly when called with correct
-        // value.
+        // SAFETY: we trust the FFI is behaving correctly when called with correct value.
         let uc_res = unsafe {
             ulksys::uplink_delete_object(
                 self.inner.project,
@@ -269,16 +224,7 @@ impl Project {
             )
         };
 
-        let res = if let Some(err) = Error::new_uplink(uc_res.error) {
-            Err(err)
-        } else {
-            Object::from_uplink_c(uc_res.object)
-        };
-
-        // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-        // itself.
-        unsafe { ulksys::uplink_free_object_result(uc_res) };
-        res
+        Object::from_ffi_object_result(uc_res)
     }
 
     /// Starts a download of the object inside of `bucket` and referenced with `key` with optional
@@ -292,16 +238,15 @@ impl Project {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
 
-        // SAFETY: we get the c-bindings representation of the opts if it isn't `None` then we get
-        // a mutable reference to it but we use the reference only inside of the scope, hence we
-        // are always referencing it during its lifetime that the scope establishes.
-        // For the rest, we trust the underlying c-binding is behaving correctly when called with
-        // correct value.
+        // SAFETY: we get the FFI representation of the opts if it isn't `None` then we get a
+        // mutable reference to it but we use the reference only inside of the scope, hence we are
+        // always referencing it during its lifetime that the scope establishes.
+        // For the rest, we trust the FFI is behaving correctly when called with correct value.
         let uc_res = unsafe {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_uplink_c();
+                uc_opts = o.to_ffi_download_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
@@ -313,55 +258,39 @@ impl Project {
             )
         };
 
-        let res = object::Download::from_uplink_c(uc_res);
-
-        // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-        // itself.
-        unsafe { ulksys::uplink_free_download_result(uc_res) };
-        res
+        object::Download::from_ffi_download_result(uc_res)
     }
 
     /// Returns the bucket if it exists otherwise it creates it.
     pub fn ensure_bucket(&self, bucket: &str) -> Result<Bucket> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
 
-        // SAFETY: we trust the underlying c-binding is behaving correctly when called with correct
-        // value.
+        // SAFETY: we trust the FFI is behaving correctly when called with correct value.
         let uc_res = unsafe {
             ulksys::uplink_ensure_bucket(self.inner.project, c_bucket.as_ptr() as *mut c_char)
         };
 
-        let res = if let Some(err) = Error::new_uplink(uc_res.error) {
-            Err(err)
-        } else {
-            Bucket::from_uplink_c(uc_res.bucket)
-        };
-
-        // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-        // itself.
-        unsafe { ulksys::uplink_free_bucket_result(uc_res) };
-        res
+        Bucket::from_ffi_bucket_result(uc_res)
     }
 
     /// Returns an iterator over the list of existing buckets with optional options.
     pub fn list_buckets(&self, opts: Option<options::ListBuckets>) -> bucket::Iterator {
-        // SAFETY: we get the c-bindings representation of the opts if it isn't `None` then we get
-        // a mutable reference to it but we use the reference only inside of the scope, hence we
-        // are always referencing it during its lifetime that the scope establishes.
-        // For the rest, we trust the underlying c-binding is behaving correctly when called with
-        // correct value.
+        // SAFETY: we get the FFI representation of the opts if it isn't `None` then we get a
+        // mutable reference to it but we use the reference only inside of the scope, hence we are
+        // always referencing it during its lifetime that the scope establishes.
+        // For the rest, we trust the FFI is behaving correctly when called with correct value.
         let uc_it = unsafe {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_uplink_c();
+                uc_opts = o.to_ffi_list_buckets_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             };
 
             ulksys::uplink_list_buckets(self.inner.project, c_opts)
         };
 
-        bucket::Iterator::from_uplink_c(uc_it)
+        bucket::Iterator::from_ffi_bucket_iterator(uc_it)
     }
 
     /// Returns an iterator over the list of existing object inside of `bucket` with optional
@@ -373,16 +302,15 @@ impl Project {
     ) -> Result<object::Iterator> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
 
-        // SAFETY: we get the c-bindings representation of the opts if it isn't `None` then we get
-        // a mutable reference to it but we use the reference only inside of the scope, hence we
-        // are always referencing it during its lifetime that the scope establishes.
-        // For the rest, we trust the underlying c-binding is behaving correctly when called with
-        // correct value.
+        // SAFETY: we get the FFI representation of the opts if it isn't `None` then we get a
+        // mutable reference to it but we use the reference only inside of the scope, hence we are
+        // always referencing it during its lifetime that the scope establishes.
+        // For the rest, we trust the FFI is behaving correctly when called with correct value.
         let uc_it = unsafe {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_uplink_c();
+                uc_opts = o.to_ffi_list_objects_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             };
 
@@ -393,7 +321,7 @@ impl Project {
             )
         };
 
-        Ok(object::Iterator::from_uplink_c(uc_it))
+        Ok(object::Iterator::from_ffi_object_iterator(uc_it))
     }
 
     /// Returns an iterator over the parts of a multipart upload started with [`Self::begin_upload`]
@@ -409,16 +337,15 @@ impl Project {
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
         let c_upload_id = helpers::cstring_from_str_fn_arg("upload_id", upload_id)?;
 
-        // SAFETY: we get the c-bindings representation of the opts if it isn't `None` then we get
-        // a mutable reference to it but we use the reference only inside of the scope, hence we
-        // are always referencing it during its lifetime that the scope establishes.
-        // For the rest, we trust the underlying c-binding is behaving correctly when called with
-        // correct value.
+        // SAFETY: we get the FFI representation of the opts if it isn't `None` then we get a
+        // mutable reference to it but we use the reference only inside of the scope, hence we are
+        // always referencing it during its lifetime that the scope establishes.
+        // For the rest, we trust the FFI is behaving correctly when called with correct value.
         let uc_it = unsafe {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_uplink_c();
+                uc_opts = o.to_ffi_list_upload_parts_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             };
 
@@ -431,7 +358,7 @@ impl Project {
             )
         };
 
-        Ok(upload::PartIterator::from_uplink_c(uc_it))
+        Ok(upload::PartIterator::from_ffi_part_iterator(uc_it))
     }
 
     /// Returns an iterator over the uncommitted uploads in `bucket` with optional options.
@@ -442,16 +369,15 @@ impl Project {
     ) -> Result<upload::Iterator> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
 
-        // SAFETY: we get the c-bindings representation of the opts if it isn't `None` then we get
-        // a mutable reference to it but we use the reference only inside of the scope, hence we
-        // are always referencing it during its lifetime that the scope establishes.
-        // For the rest, we trust the underlying c-binding is behaving correctly when called with
-        // correct value.
+        // SAFETY: we get the FFI representation of the opts if it isn't `None` then we get a
+        // mutable reference to it but we use the reference only inside of the scope, hence we are
+        // always referencing it during its lifetime that the scope establishes.
+        // For the rest, we trust the FFI is behaving correctly when called with correct value.
         let uc_it = unsafe {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_uplink_c();
+                uc_opts = o.to_ffi_list_uploads_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
@@ -462,7 +388,7 @@ impl Project {
             )
         };
 
-        Ok(upload::Iterator::from_uplink_c(uc_it))
+        Ok(upload::Iterator::from_ffi_upload_iterator(uc_it))
     }
 
     /// Moves an object to a different bucket or/and key with optional options.
@@ -479,16 +405,15 @@ impl Project {
         let c_new_bucket = helpers::cstring_from_str_fn_arg("new_bucket", new_bucket)?;
         let c_new_key = helpers::cstring_from_str_fn_arg("new_key", new_key)?;
 
-        // SAFETY: we get the c-bindings representation of the opts if it isn't `None` then we get
-        // a mutable reference to it but we use the reference only inside of the scope, hence we
-        // are always referencing it during its lifetime that the scope establishes.
-        // For the rest, we trust the underlying c-binding is behaving correctly when called with
-        // correct value.
+        // SAFETY: we get the FFI representation of the opts if it isn't `None` then we get a
+        // mutable reference to it but we use the reference only inside of the scope, hence we are
+        // always referencing it during its lifetime that the scope establishes.
+        // For the rest, we trust the FFI is behaving correctly when called with correct value.
         let uc_err = unsafe {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_uplink_c();
+                uc_opts = o.to_ffi_move_object_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
@@ -502,10 +427,7 @@ impl Project {
             )
         };
 
-        if let Some(err) = Error::new_uplink(uc_err) {
-            // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-            // itself.
-            unsafe { ulksys::uplink_free_error(uc_err) };
+        if let Some(err) = Error::from_ffi_error(uc_err) {
             Err(err)
         } else {
             Ok(())
@@ -524,15 +446,11 @@ impl Project {
     /// A successful revocation request may not actually apply the revocation immediately because
     /// of the satellite's access caching policies.
     pub fn revoke_access(&self, access: Grant) -> Result<()> {
-        // SAFETY: we trust the underlying c-binding is behaving correctly when called with correct
-        // value.
+        // SAFETY: we trust the FFI is behaving correctly when called with correct value.
         let uc_err =
-            unsafe { ulksys::uplink_revoke_access(self.inner.project, access.as_uplink_c()) };
+            unsafe { ulksys::uplink_revoke_access(self.inner.project, access.as_ffi_access()) };
 
-        if let Some(err) = Error::new_uplink(uc_err) {
-            // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-            // itself.
-            unsafe { ulksys::uplink_free_error(uc_err) };
+        if let Some(err) = Error::from_ffi_error(uc_err) {
             Err(err)
         } else {
             Ok(())
@@ -543,22 +461,12 @@ impl Project {
     pub fn stat_bucket(&self, bucket: &str) -> Result<Bucket> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
 
-        // SAFETY: we trust the underlying c-binding is behaving correctly when called with correct
-        // value.
+        // SAFETY: we trust the FFI is behaving correctly when called with correct value.
         let uc_res = unsafe {
             ulksys::uplink_stat_bucket(self.inner.project, c_bucket.as_ptr() as *mut c_char)
         };
 
-        let res = if let Some(err) = Error::new_uplink(uc_res.error) {
-            Err(err)
-        } else {
-            Bucket::from_uplink_c(uc_res.bucket)
-        };
-
-        // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-        // itself.
-        unsafe { ulksys::uplink_free_bucket_result(uc_res) };
-        res
+        Bucket::from_ffi_bucket_result(uc_res)
     }
 
     /// Returns the object's information inside of `bucket` and reference by `key`.
@@ -566,8 +474,7 @@ impl Project {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
 
-        // SAFETY: we trust the underlying c-binding is behaving correctly when called with correct
-        // value.
+        // SAFETY: we trust the FFI is behaving correctly when called with correct value.
         let uc_res = unsafe {
             ulksys::uplink_stat_object(
                 self.inner.project,
@@ -576,16 +483,7 @@ impl Project {
             )
         };
 
-        let res = if let Some(err) = Error::new_uplink(uc_res.error) {
-            Err(err)
-        } else {
-            Object::from_uplink_c(uc_res.object)
-        };
-
-        // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-        // itself.
-        unsafe { ulksys::uplink_free_object_result(uc_res) };
-        res
+        Object::from_ffi_object_result(uc_res)
     }
 
     /// Starts an object upload into `bucket` with the specified `key` and optional options.
@@ -598,16 +496,15 @@ impl Project {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
 
-        // SAFETY: we get the c-bindings representation of the opts if it isn't `None` then we get
-        // a mutable reference to it but we use the reference only inside of the scope, hence we
-        // are always referencing it during its lifetime that the scope establishes.
-        // For the rest, we trust the underlying c-binding is behaving correctly when called with
-        // correct value.
+        // SAFETY: we get the FFI representation of the opts if it isn't `None` then we get a
+        // mutable reference to it but we use the reference only inside of the scope, hence we are
+        // always referencing it during its lifetime that the scope establishes.
+        // For the rest, we trust the FFI is behaving correctly when called with correct value.
         let uc_res = unsafe {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_uplink_c();
+                uc_opts = o.to_ffi_upload_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
@@ -619,12 +516,7 @@ impl Project {
             )
         };
 
-        let res = object::Upload::from_uplink_c(uc_res);
-
-        // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-        // itself.
-        unsafe { ulksys::uplink_free_upload_result(uc_res) };
-        res
+        object::Upload::from_ffi_upload_result(uc_res)
     }
 
     /// Uploads a part with `part_number` to a multipart upload started with
@@ -640,8 +532,7 @@ impl Project {
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
         let c_upload_id = helpers::cstring_from_str_fn_arg("upload_id", upload_id)?;
 
-        // SAFETY: we trust the underlying c-binding is behaving correctly when called with correct
-        // value.
+        // SAFETY: we trust the FFI is behaving correctly when called with correct value.
         let uc_res = unsafe {
             ulksys::uplink_upload_part(
                 self.inner.project,
@@ -652,12 +543,7 @@ impl Project {
             )
         };
 
-        let res = upload::PartUpload::from_uplink_c(uc_res);
-
-        // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-        // itself.
-        unsafe { ulksys::uplink_free_part_upload_result(uc_res) };
-        res
+        upload::PartUpload::from_ffi_part_upload_result(uc_res)
     }
 
     /// Replaces the custom metadata for the object inside of `bucket` and referenced by `key` with
@@ -675,16 +561,15 @@ impl Project {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
 
-        // SAFETY: we get the c-bindings representation of the opts if it isn't `None` then we get
-        // a mutable reference to it but we use the reference only inside of the scope, hence we
-        // are always referencing it during its lifetime that the scope establishes.
-        // For the rest, we trust the underlying c-binding is behaving correctly when called with
-        // correct value.
+        // SAFETY: we get the FFI representation of the opts if it isn't `None` then we get a
+        // mutable reference to it but we use the reference only inside of the scope, hence we are
+        // always referencing it during its lifetime that the scope establishes.
+        // For the rest, we trust the FFI is behaving correctly when called with correct value.
         let uc_err = unsafe {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_uplink_c();
+                uc_opts = o.to_ffi_upload_object_metadata_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
@@ -692,15 +577,12 @@ impl Project {
                 self.inner.project,
                 c_bucket.as_ptr() as *mut c_char,
                 c_key.as_ptr() as *mut c_char,
-                metadata.to_uplink_c(),
+                metadata.to_ffi_custom_metadata(),
                 c_opts,
             )
         };
 
-        if let Some(err) = Error::new_uplink(uc_err) {
-            // SAFETY: we trust the underlying c-bindings of freeing memory of pointers allocated by
-            // itself.
-            unsafe { ulksys::uplink_free_error(uc_err) };
+        if let Some(err) = Error::from_ffi_error(uc_err) {
             Err(err)
         } else {
             Ok(())
@@ -710,8 +592,8 @@ impl Project {
 
 impl Drop for Project {
     fn drop(&mut self) {
-        // SAFETY: we trust that the underlying c-bindings is doing correct operations when closing
-        // and freeing a correctly created `UplinkProjectResult` value.
+        // SAFETY: we trust that the FFI is doing correct operations when closing and freeing a
+        // correctly created `UplinkProjectResult` value.
         unsafe {
             // At this point we cannot do anything about the error, so discarded.
             // TODO: find out if retrying the operation it's the right thing to do for some of the
