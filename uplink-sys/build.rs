@@ -72,15 +72,21 @@ fn main() {
     bindgen::Builder::default()
         // Use 'allow lists' to avoid generating bindings for system header includes
         // a lot of which isn't required and can't be handled safely anyway.
-        // uplink-c uses consistent naming so whitelisting is much easier than blacklisting.
+        // uplink-c uses consistent naming so an allow list is much easier than a block list.
         // All uplink types start with Uplink
         .allowlist_type("Uplink.*")
+        // All edge services types start with Edge
+        .allowlist_type("Edge.*")
         // except for uplink_const_char
         .allowlist_type("uplink_const_char")
         // All uplink functions start with uplink_
         .allowlist_function("uplink_.*")
+        // All edge services functions start with edge_
+        .allowlist_function("edge_.*")
         // Uplink error code #define's start with UPLINK_ERROR_
         .allowlist_var("UPLINK_ERROR_.*")
+        // Edge services error code #define's start with EDGE_ERROR_
+        .allowlist_var("EDGE_ERROR_.*")
         // This header file is the main API interface and includes all other header files that are required
         // (bindgen runs c preprocessor so we don't need to include nested headers)
         .header(
