@@ -12,4 +12,4 @@ homepage = "https://storj.io"
 
 
 [dependencies]
-uplink-sys = { path = "../uplink-sys", version = "0.3.0" }
+uplink-sys = { path = "../uplink-sys", version = "0.4.0" }
