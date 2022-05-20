@@ -1,10 +1,10 @@
 //! Storj DCS Access Grant and bound types.
 
 use crate::config::Config;
-use crate::uplink_c::Ensurer;
+use crate::uplink_c::{string_from_ffi_string_result, Ensurer};
 use crate::{helpers, EncryptionKey, Error, Result};
 
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::os::raw::c_char;
 use std::time::Duration;
 use std::vec::Vec;
@@ -145,7 +145,7 @@ impl Grant {
     }
 
     /// Returns the satellite node URL associated with this access grant.
-    pub fn satellite_address(&self) -> Result<String> {
+    pub fn satellite_address(&self) -> Result<&str> {
         // SAFETY: we have checked that the FFI value attached to this instance is valid at its
         // construction time.
         let res = unsafe { ulksys::uplink_access_satellite_address(self.inner.access) };
@@ -155,7 +155,7 @@ impl Grant {
 
     /// Serializes an access grant such that it can be used to create a [`Self::new()`] instance of
     /// this type or parsed with other tools.
-    pub fn serialize(&self) -> Result<String> {
+    pub fn serialize(&self) -> Result<&str> {
         // SAFETY: we have checked that the FFI value attached to this instance is valid at its
         // construction time.
         let res = unsafe { ulksys::uplink_access_serialize(self.inner.access) };
@@ -405,32 +405,6 @@ impl Permission {
             not_after: self.not_after.map_or(0, |d| d.as_secs()) as i64,
         }
     }
-}
-
-fn string_from_ffi_string_result(ffi_result: ulksys::UplinkStringResult) -> Result<String> {
-    ffi_result.ensure();
-
-    if let Some(e) = Error::new_uplink(ffi_result.error) {
-        // SAFETY: the FFI release result memory of those fields that they aren't `NULL` otherwise
-        // it doesn't do anything. Anwyay at this point there was an error so at least the `error`
-        // field ins't `NULL`.
-        unsafe { ulksys::uplink_free_string_result(ffi_result) };
-        return Err(e);
-    }
-
-    let cstring;
-    // SAFETY: we have checked that `ffi_result` is valid and it doesn't have an error so the
-    // `string` field isn't `NULL`.
-    // We are taking ownershipt of the `string` field so it's safe to free the memory of
-    // `ffi_result`.
-    unsafe {
-        cstring = CStr::from_ptr(ffi_result.string).to_owned();
-        ulksys::uplink_free_string_result(ffi_result);
-    };
-
-    Ok(cstring
-        .into_string()
-        .expect("FFI has returned a c-string with invalid UTF-8 characters"))
 }
 
 #[cfg(test)]

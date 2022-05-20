@@ -9,18 +9,19 @@
 
 #![deny(missing_docs)]
 
+pub mod access;
 pub(crate) mod bucket;
 pub(crate) mod config;
 pub mod docs;
+pub mod edge;
 pub(crate) mod encryption_key;
 pub mod error;
 pub(crate) mod helpers;
+pub mod metadata;
 pub(crate) mod object;
+pub mod project;
 mod uplink_c;
 
-pub mod access;
-pub mod metadata;
-pub mod project;
 pub use bucket::Bucket;
 pub use config::Config;
 pub use encryption_key::EncryptionKey;

@@ -46,10 +46,10 @@ General entities:
 
 Edge entities:
 
-- [ ] [Config](https://pkg.go.dev/storj.io/uplink/edge#Config)
-- [ ] [Credentials](https://pkg.go.dev/storj.io/uplink/edge#Credentials)
-- [ ] [Register Access Options](https://pkg.go.dev/storj.io/uplink/edge#RegisterAccessOptions)
-- [ ] [Share URL Options](https://pkg.go.dev/storj.io/uplink/edge#ShareURLOptions)
+- [X] [Config](https://pkg.go.dev/storj.io/uplink/edge#Config)
+- [X] [Credentials](https://pkg.go.dev/storj.io/uplink/edge#Credentials)
+- [X] [Register Access Options](https://pkg.go.dev/storj.io/uplink/edge#RegisterAccessOptions)
+- [X] [Share URL Options](https://pkg.go.dev/storj.io/uplink/edge#ShareURLOptions)
 
 
 Integration tests:

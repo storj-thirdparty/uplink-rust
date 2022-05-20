@@ -207,6 +207,13 @@ pub enum Uplink {
     /// or aborted.
     UploadDone(String),
 
+    /// Edge service error codes
+
+    /// An Edge Auth service network or protocol error.
+    EdgeAuthDialFailed(String),
+    /// An Edge Auth service internal error.
+    EdgeRegsterAccessFailed(String),
+
     /// Unknowns isn't an actual code in the FFI constants. It's mostly used to map a code when it
     /// doesn't match any and have not to panic. Callers should report this as a BUG that may be
     /// due to not having updated the FFI to the last version.
@@ -255,6 +262,8 @@ impl Uplink {
             ulksys::UPLINK_ERROR_SEGMENTS_LIMIT_EXCEEDED => Self::SegmentsLimitExceeded(msg),
             ulksys::UPLINK_ERROR_STORAGE_LIMIT_EXCEEDED => Self::StorageLimitExceeded(msg),
             ulksys::UPLINK_ERROR_UPLOAD_DONE => Self::UploadDone(msg),
+            ulksys::EDGE_ERROR_AUTH_DIAL_FAILED => Self::EdgeAuthDialFailed(msg),
+            ulksys::EDGE_ERROR_REGISTER_ACCESS_FAILED => Self::EdgeRegsterAccessFailed(msg),
             _ => Self::Unknown(msg),
         })
     }
@@ -291,6 +300,8 @@ impl fmt::Display for Uplink {
             Self::SegmentsLimitExceeded(msg) => ("segments limit exceeded", msg),
             Self::StorageLimitExceeded(msg) => ("storage limit exceeded", msg),
             Self::UploadDone(msg) => ("upload done", msg),
+            Self::EdgeAuthDialFailed(msg) => ("dial to auth service failed", msg),
+            Self::EdgeRegsterAccessFailed(msg) => ("register access for edge service failed", msg),
             Self::Unknown(msg) => ("unknown", msg),
         };
 

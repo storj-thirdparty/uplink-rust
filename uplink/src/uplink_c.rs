@@ -1,5 +1,9 @@
 //! Convenient methods implemented for the original `uplink-sys` types.
 
+use crate::{Error, Result};
+
+use std::ffi::CStr;
+
 use uplink_sys as ulksys;
 
 /// An interface for ensuring that an instance of type returned by the FFI is correct in terms that
@@ -148,6 +152,77 @@ impl Ensurer for ulksys::UplinkUploadResult {
         );
         self
     }
+}
+
+impl Ensurer for ulksys::EdgeCredentials {
+    fn ensure(&self) -> &Self {
+        assert!(
+            !self.access_key_id.is_null(),
+            "FFI returned an invalid EdgeCredentials; access_key_id field is NULL"
+        );
+        assert!(
+            !self.secret_key.is_null(),
+            "FFI returned an invalid EdgeCredentials; secret_key field is NULL"
+        );
+        assert!(
+            !self.endpoint.is_null(),
+            "FFI returned an invalid EdgeCredentials; endpoint field is NULL"
+        );
+
+        self
+    }
+}
+
+impl Ensurer for ulksys::EdgeCredentialsResult {
+    fn ensure(&self) -> &Self {
+        assert!(!self.credentials.is_null() || !self.error.is_null(),
+        "FFI returned an invalid EdgeCredentialsResult; credentials and error fields are both NULL",
+        );
+
+        self
+    }
+}
+
+/// Returns a string from an FFI string result or an
+///
+/// * [Uplink error](crate::error::Uplink) if `ffi_result` contains an error.
+/// * [Internal error](crate::error::Internal) if the string contains invalid UTF-8 characters.
+///
+/// It takes ownership of `ffi_result`, hence this function frees `ffi_result` before returning.
+pub(crate) fn string_from_ffi_string_result<'a>(
+    ffi_result: ulksys::UplinkStringResult,
+) -> Result<&'a str> {
+    ffi_result.ensure();
+
+    if let Some(e) = Error::new_uplink(ffi_result.error) {
+        // SAFETY: the FFI release result memory of those fields that they aren't `NULL` otherwise
+        // it doesn't do anything. Anyway at this point there was an error so at least the `error`
+        // field isn't `NULL`.
+        unsafe { ulksys::uplink_free_string_result(ffi_result) };
+        return Err(e);
+    }
+
+    let c_str;
+    // SAFETY: we have checked that `ffi_result` is valid and it doesn't have an error so the
+    // `string` field isn't `NULL`.
+    // We are taking ownership of the `string` field so it's safe to free the memory of
+    // `ffi_result`.
+    unsafe {
+        c_str = CStr::from_ptr(ffi_result.string);
+        ulksys::uplink_free_string_result(ffi_result);
+    };
+
+    let res = c_str.to_str().map_err(|err| {
+        Error::new_internal(
+            "FFI returned an invalid string; it contains invalid UTF-8 characters",
+            err.into(),
+        )
+    });
+
+    // SAFETY: we trust the FFI is safe freeing the memory of a valid  value instantiated by the
+    // same FFI.
+    unsafe { ulksys::uplink_free_string_result(ffi_result) };
+    res
 }
 
 #[cfg(test)]
@@ -937,5 +1012,110 @@ mod test {
         };
 
         upload_res.ensure();
+    }
+
+    #[test]
+    fn test_ensurer_edge_credentials_valid() {
+        let creds = ulksys::EdgeCredentials {
+            access_key_id: CString::new("access_key_id").unwrap().into_raw(),
+            secret_key: CString::new("secret_key").unwrap().into_raw(),
+            endpoint: CString::new("endpoint").unwrap().into_raw(),
+        };
+        creds.ensure();
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "FFI returned an invalid EdgeCredentials; access_key_id field is NULL"
+    )]
+    fn test_ensurer_edge_credentials_invalid_access_key_id_null() {
+        let creds = ulksys::EdgeCredentials {
+            access_key_id: ptr::null_mut(),
+            secret_key: CString::new("secret_key").unwrap().into_raw(),
+            endpoint: CString::new("endpoint").unwrap().into_raw(),
+        };
+        creds.ensure();
+    }
+
+    #[test]
+    #[should_panic(expected = "FFI returned an invalid EdgeCredentials; secret_key field is NULL")]
+    fn test_ensurer_edge_credentials_invalid_secret_key_null() {
+        let creds = ulksys::EdgeCredentials {
+            access_key_id: CString::new("access_key_id").unwrap().into_raw(),
+            secret_key: ptr::null_mut(),
+            endpoint: CString::new("endpoint").unwrap().into_raw(),
+        };
+        creds.ensure();
+    }
+
+    #[test]
+    #[should_panic(expected = "FFI returned an invalid EdgeCredentials; endpoint field is NULL")]
+    fn test_ensurer_edge_credentials_invalid_endpoint_null() {
+        let creds = ulksys::EdgeCredentials {
+            access_key_id: CString::new("access_key_id").unwrap().into_raw(),
+            secret_key: CString::new("secret_key").unwrap().into_raw(),
+            endpoint: ptr::null_mut(),
+        };
+        creds.ensure();
+    }
+
+    #[test]
+    fn test_ensurer_edge_credentials_result_valid() {
+        {
+            // Has an access.
+            let creds_res = ulksys::EdgeCredentialsResult {
+                credentials: &mut ulksys::EdgeCredentials {
+                    access_key_id: CString::new("access_key_id").unwrap().into_raw(),
+                    secret_key: CString::new("secret_key").unwrap().into_raw(),
+                    endpoint: CString::new("endpoint").unwrap().into_raw(),
+                },
+                error: ptr::null_mut::<ulksys::UplinkError>(),
+            };
+
+            creds_res.ensure();
+        }
+
+        {
+            // Has an error.
+            let creds_res = ulksys::EdgeCredentialsResult {
+                credentials: ptr::null_mut::<ulksys::EdgeCredentials>(),
+                error: &mut ulksys::UplinkError {
+                    code: 0,
+                    message: ptr::null_mut(),
+                },
+            };
+
+            creds_res.ensure();
+        }
+
+        {
+            // Has an access and an error.
+            let creds_res = ulksys::EdgeCredentialsResult {
+                credentials: &mut ulksys::EdgeCredentials {
+                    access_key_id: CString::new("access_key_id").unwrap().into_raw(),
+                    secret_key: CString::new("secret_key").unwrap().into_raw(),
+                    endpoint: CString::new("endpoint").unwrap().into_raw(),
+                },
+                error: &mut ulksys::UplinkError {
+                    code: 0,
+                    message: ptr::null_mut(),
+                },
+            };
+
+            creds_res.ensure();
+        }
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "FFI returned an invalid EdgeCredentialsResult; credentials and error fields are both NULL"
+    )]
+    fn test_ensurer_edge_credentials_result_invalid_both_null() {
+        let creds_res = ulksys::EdgeCredentialsResult {
+            credentials: ptr::null_mut::<ulksys::EdgeCredentials>(),
+            error: ptr::null_mut::<ulksys::UplinkError>(),
+        };
+
+        creds_res.ensure();
     }
 }
