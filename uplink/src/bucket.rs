@@ -37,15 +37,17 @@ impl<'a> Bucket<'a> {
         // SAFETY: we have check that the `uc_bucket` doesn't have fields with NULL pointers through
         // the `ensure` method.
         unsafe {
-            match CStr::from_ptr(uc_bucket.name).to_str() {
-                Ok(n) => name = n,
-                Err(err) => {
-                    return Err(Error::new_internal(
-                        "FFI returned an invalid bucket's name; it contains invalid UTF-8 characters",
-                        err.into(),
-                    ));
-                }
-            };
+            // User create buckets and satellites and/or client libraries or applications don't
+            // likely allow to use invalid UTF-8 characters in their names. Nonetheless, we don't
+            // panic if they contain some and we return an internal error because we see it's a
+            // limitation of Rust and C interoperability and consumers of this crate would have a
+            // chance to deal with them appropriately.
+            name = CStr::from_ptr(uc_bucket.name).to_str().map_err(|err| {
+                Error::new_internal(
+                    "FFI returned an invalid bucket's name; it contains invalid UTF-8 characters",
+                    err.into(),
+                )
+            })?;
             created_at = Duration::new(uc_bucket.created as u64, 0);
             ulksys::uplink_free_bucket(uc_bucket_ptr);
         }
