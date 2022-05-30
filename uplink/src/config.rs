@@ -48,7 +48,7 @@ impl<'a> Config<'a> {
         let inner;
         {
             let uagent = helpers::cstring_from_str_fn_arg("user_agent", user_agent)?;
-            let tdir = temp_dir.or(Some("")).unwrap();
+            let tdir = temp_dir.unwrap_or("");
             let tdir = helpers::cstring_from_str_fn_arg("temp_dir", tdir)?;
 
             inner = ulksys::UplinkConfig {

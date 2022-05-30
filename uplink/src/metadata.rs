@@ -115,6 +115,7 @@ impl Custom {
     ///
     /// When this method is called more than once and `self` isn't mutated in between, the calls
     /// after the first are very cheap because the returned value is cached.
+    #[allow(clippy::wrong_self_convention)]
     pub(crate) fn to_ffi_custom_metadata(&mut self) -> ulksys::UplinkCustomMetadata {
         if self.inner.is_none() {
             self.inner = Some(UplinkCustomMetadataWrapper::from_custom(self));

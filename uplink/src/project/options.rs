@@ -25,6 +25,7 @@ impl<'a> CommitUpload<'a> {
     ///
     /// It takes a mutable reference because [`metadata::Custom.to_ffi_c`] requires a mutable
     /// reference.
+    #[allow(clippy::wrong_self_convention)]
     pub(crate) fn to_ffi_commit_upload_options(&mut self) -> ulksys::UplinkCommitUploadOptions {
         ulksys::UplinkCommitUploadOptions {
             custom_metadata: self.custom_metadata.to_ffi_custom_metadata(),
