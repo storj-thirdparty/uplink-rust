@@ -45,6 +45,7 @@ impl Object<'_> {
         // the `ensure` method.
         unsafe {
             key = CStr::from_ptr(uc_obj.key).to_str().map_err(|err| {
+                ulksys::uplink_free_object(uc_obj_ptr);
                 Error::new_internal(
                     "FFI returned an invalid object's key; it contains invalid UTF-8 characters",
                     BoxError::from(err),
@@ -185,6 +186,8 @@ impl Download {
         uc_result.ensure();
 
         if let Some(err) = Error::new_uplink(uc_result.error) {
+            // SAFETY: we trust the FFI is safe freeing the memory of a valid pointer.
+            unsafe { ulksys::uplink_free_download_result(uc_result) };
             return Err(err);
         }
 

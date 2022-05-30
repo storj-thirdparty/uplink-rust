@@ -85,8 +85,8 @@
 //! We define the `with_ffi_` constructors when the passed FFI value doesn't have an associated
 //! function for freeing it. This happens on those values that are associated to others and their
 //! resources are freed by the value that holds them. Any `with_ffi_` constructor must always
-//! guarantee that make a copy of the values of the passed FFI value, so the caller can free its
-//! associated after the call without incurring in a "double free" race condition.
+//! guarantee that make a copy of the fileds' values of the passed FFI value to untangle the two
+//! instanes and not having dangling pointers.
 //!
 //! `from_ffi_` constructors takes ownership, but, unfortunately, this is not from the Rust's
 //! ownership meaning. We cannot enforce the Rust ownership because they are raw pointers or values
@@ -145,9 +145,13 @@
 //! cost which follows the current
 //! [Rust API naming conventions](https://rust-lang.github.io/api-guidelines/naming.html).
 //!
-//! These methods always return a borrowed value (see
-//! [FFI values "ownership"](#ffi-values-ownership)), so the returned lives as long as the instance
-//! that returns it.
+//! These methods always return
+//! * a borrowed value (see [FFI values "ownership"](#ffi-values-ownership)), so the returned lives
+//!   as long as the instance that returns it.
+//! * a value when the returned type only contains simple values, so there isn't any extra heap
+//!   allocation.
+//!
+//! In any of these cases, the caller has worry in freeing their used memory.
 //!
 //! In some cases this method requires a mutable reference because of some internal constrains,
 //! when that's the case, the reasons are mentioned in the method documentation.

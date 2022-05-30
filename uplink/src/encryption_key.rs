@@ -1,6 +1,7 @@
 //! Storj DCS Encryption key.
 
-use crate::{helpers, uplink_c::Ensurer, Result};
+use crate::uplink_c::Ensurer;
+use crate::{helpers, Error, Result};
 
 use uplink_sys as ulksys;
 
@@ -31,7 +32,7 @@ impl EncryptionKey {
         // to to mutable rather than using the `as_mut_ptr` method because otherwise it will require
         // the `salt` parameter to be mutable but the FFI function doesn't mutate it despite that
         // the function parameters is specified as mutable.
-        let enckres = unsafe {
+        let uc_res = unsafe {
             ulksys::uplink_derive_encryption_key(
                 passphrase.as_ptr() as *mut c_char,
                 salt.as_ptr() as *mut c_void,
@@ -39,8 +40,15 @@ impl EncryptionKey {
             )
         };
 
-        (&enckres).ensure();
-        Ok(Self { inner: enckres })
+        (&uc_res).ensure();
+
+        if let Some(err) = Error::new_uplink(uc_res.error) {
+            // SAFETY: we trust the FFI is safe freeing the memory of a valid pointer.
+            unsafe { ulksys::uplink_free_encryption_key_result(uc_res) };
+            return Err(err);
+        }
+
+        Ok(Self { inner: uc_res })
     }
 
     /// Returns the FFI representation of this encryption key.

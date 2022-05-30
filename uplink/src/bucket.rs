@@ -43,6 +43,7 @@ impl<'a> Bucket<'a> {
             // limitation of Rust and C interoperability and consumers of this crate would have a
             // chance to deal with them appropriately.
             name = CStr::from_ptr(uc_bucket.name).to_str().map_err(|err| {
+                ulksys::uplink_free_bucket(uc_bucket_ptr);
                 Error::new_internal(
                     "FFI returned an invalid bucket's name; it contains invalid UTF-8 characters",
                     err.into(),

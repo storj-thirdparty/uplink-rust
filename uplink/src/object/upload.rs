@@ -32,6 +32,8 @@ impl Upload {
         uc_upload.ensure();
 
         if let Some(err) = Error::new_uplink(uc_upload.error) {
+            // SAFETY: we trust the FFI is safe freeing the memory of a correct value.
+            unsafe { ulksys::uplink_free_upload_result(uc_upload) };
             Err(err)
         } else {
             Ok(Self { inner: uc_upload })
@@ -367,6 +369,8 @@ impl PartUpload {
         uc_pupload.ensure();
 
         if let Some(err) = Error::new_uplink(uc_pupload.error) {
+            // SAFETY: we trust the FFI is safe freeing the memory of a valid value.
+            unsafe { ulksys::uplink_free_part_upload_result(uc_pupload) };
             Err(err)
         } else {
             Ok(Self { inner: uc_pupload })
