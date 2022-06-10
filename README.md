@@ -2,8 +2,6 @@
 
 Storj Uplink Rust bindings for the Rust programming language.
 
-__NOTE__ [`uplink` crate](uplink) is __work in progress__.
-
 ## Repository layout
 
 Following the conventions used for creating Rust bindings through [bindgen][bindgen], this repository contains two crates:

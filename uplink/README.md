@@ -2,9 +2,17 @@
 
 Safe and idiomatic Rust crate library for the [Storj Uplink Library][storj-uplink].
 
-__THIS IS WIP__, there is not any estimation of time nor a commitment when this
-Rust binding will have all the functionalities, so don't use it for any non-pet
-project.
+## Current status
+
+This crate has implemented all the functionalities offered by the `uplink-sys`
+create and it's fully documented.
+
+It has also several unit-tests but it lacks of integration tests (see
+[Development plan and status section](#development-plan-and-status)).
+Integration test would prove that it works as expected.
+
+We consider its current status beta and we advice that  it's NOT READY for
+production yet.
 
 ## Implementation
 
