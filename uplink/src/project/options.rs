@@ -330,7 +330,7 @@ impl ListUploadParts {
 pub struct MoveObject {}
 
 impl MoveObject {
-    /// The returned options' pointer are valid as long as `self`.
+    /// Returns the FFI representation of the options.
     pub(crate) fn to_ffi_move_object_options(&self) -> ulksys::UplinkMoveObjectOptions {
         ulksys::UplinkMoveObjectOptions {}
     }
