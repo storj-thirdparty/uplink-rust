@@ -149,6 +149,46 @@ impl Project {
         Object::from_ffi_commit_upload_result(uc_res)
     }
 
+    /// Atomically copies an object to a different bucket or/and key without downloading and
+    /// uploading it.
+    pub fn copy_object(
+        &self,
+        current_bucket: &str,
+        current_key: &str,
+        new_bucket: &str,
+        new_key: &str,
+        opts: Option<options::CopyObject>,
+    ) -> Result<Object> {
+        let c_cur_bucket = helpers::cstring_from_str_fn_arg("current_bucket", current_bucket)?;
+        let c_cur_key = helpers::cstring_from_str_fn_arg("current_key", current_key)?;
+        let c_new_bucket = helpers::cstring_from_str_fn_arg("new_bucket", new_bucket)?;
+        let c_new_key = helpers::cstring_from_str_fn_arg("new_key", new_key)?;
+
+        // SAFETY: we get the FFI representation of the opts if it isn't `None` then we get a
+        // mutable reference to it but we use the reference only inside of the scope, hence we are
+        // always referencing it during its lifetime that the scope establishes.
+        // For the rest, we trust the FFI is behaving correctly when called with correct value.
+        let uc_res = unsafe {
+            let mut c_opts = ptr::null_mut();
+            let mut uc_opts;
+            if let Some(o) = opts {
+                uc_opts = o.to_ffi_copy_object_options();
+                c_opts = ptr::addr_of_mut!(uc_opts);
+            }
+
+            ulksys::uplink_copy_object(
+                self.inner.project,
+                c_cur_bucket.as_ptr() as *mut c_char,
+                c_cur_key.as_ptr() as *mut c_char,
+                c_new_bucket.as_ptr() as *mut c_char,
+                c_new_key.as_ptr() as *mut c_char,
+                c_opts,
+            )
+        };
+
+        Object::from_ffi_object_result(uc_res)
+    }
+
     /// Creates a new bucket.
     ///
     /// It returns the bucket information and `true` when it's created or `false` if it already

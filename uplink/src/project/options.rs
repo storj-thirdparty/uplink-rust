@@ -33,6 +33,18 @@ impl<'a> CommitUpload<'a> {
     }
 }
 
+/// Options for copying objects to a different bucket or/and key without downloading and uploading
+/// it.
+#[derive(Default)]
+pub struct CopyObject {}
+
+impl CopyObject {
+    /// Returns the FFI representation of the options.
+    pub(crate) fn to_ffi_copy_object_options(&self) -> ulksys::UplinkCopyObjectOptions {
+        ulksys::UplinkCopyObjectOptions {}
+    }
+}
+
 /// Options for downloading an object.
 #[derive(Default)]
 pub struct Download {
