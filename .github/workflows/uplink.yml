@@ -1,0 +1,33 @@
+name: uplink
+
+on:
+  push:
+    branches: main
+    paths:
+      - 'uplink/**'
+  pull_request:
+    paths:
+      - 'uplink/**'
+
+env:
+  # Show colors for cargo output
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check-implementation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: uplink
+    steps:
+      - name: Checkouts repository
+        uses: actions/checkout@v2
+      - name: build-uplink-sys
+        run: make build
+        working-directory: uplink-sys
+      - name: lint
+        run: make lint
+        env:
+          RUST_BACKTRACE: full
+      - name: test
+        run: make test
