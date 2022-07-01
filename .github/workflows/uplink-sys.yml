@@ -1,47 +1,44 @@
 name: uplink-sys
 
-# Only run CI on updates to main branch
 on:
   push:
     branches: main
+    paths:
+      - 'uplink-sys/**'
   pull_request:
     branches: main
+    paths:
+      - 'uplink-sys/**'
 
-# Show colors for cargo output
 env:
+  # Show colors for cargo output
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-and-test:
+  check-implementation:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: uplink-sys
     steps:
-    # Checkout repo
-    - uses: actions/checkout@v2
-    # Checkout submodules
+    - name: Checkout repository
+      uses: actions/checkout@v2
     - name: Checkout Submodules
       run: git submodule update --init
-    # Rustfmt
-    - name: rustfmt
-      run: cargo fmt --all -- --check
-      working-directory: uplink-sys
+    - name: lint
+      run: make lint
     # Clippy
-    - name: clippy
+    #- name: clippy
       # workaround for clippy bug where it emits warnings instead of errors if it's not a clean build (or in this case we just fudge the timestamps of .rs files)
-      run: find . | grep "\.rs$" | xargs touch ; cargo clippy --workspace -- -D clippy::all
-      working-directory: uplink-sys
-    # Build uplink-sys crate
+      #run: find . | grep "\.rs$" | xargs touch ; cargo clippy --workspace -- -D clippy::all
     - name: Build
       run: make build
-      working-directory: uplink-sys
-    # Create secrets file for tests
-    - name: Secrets
+    - name: Create secrets for tests
       run: printf "${{ secrets.STORJ_TEST_SAT_ADDRESS }}\n${{ secrets.STORJ_TEST_API_KEY }}\n${{ secrets.STORJ_TEST_PASSPHRASE }}" > test_secrets.txt
-      working-directory: uplink-sys
-    # Run uplink-sys crate tests
-    - name: Tests
-      run: make test ; rm test_secrets.txt
-      working-directory: uplink-sys
-    # Verify crate can build for publishing
+    - name: Test
+      run: make test
+    - name: Delete secrets for tests
+      if: always()
+      run: rm -f test_secrets.txt
     - name: Crate Publish Test
       run: make publish-test
-      working-directory: uplink-sys
