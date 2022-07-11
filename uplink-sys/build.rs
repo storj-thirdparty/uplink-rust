@@ -10,18 +10,22 @@ fn main() {
     // Directory containing uplink-c project source
     let uplink_c_src = PathBuf::from("uplink-c");
 
-    // Build uplink-c generates precompiled lib and header files in .build directory.
-    // We execute the command in its directory because go build, from v1.18, embeds version control
-    // information and the command fails if `-bildvcs=false` isn't set. We don't want to pass the
-    // command-line flag because then it would fail when using a previous Go version.
-    // Copying and building from a copy it doesn't work because it's a git submodule, hence it uses
-    // a relative path to the superproject unless that the destination path is under the same
-    // parent tree directory and with the same depth.
-    Command::new("make")
-        .arg("build")
-        .current_dir(&uplink_c_src)
-        .status()
-        .expect("Failed to run make command from build.rs.");
+    // Don't compile the uplink-c libraries when building the docs for not requiring Go to be
+    // installed in the Docker image for building them used by docs.rs
+    if env::var("DOCS_RS").is_err() {
+        // Build uplink-c generates precompiled lib and header files in .build directory.
+        // We execute the command in its directory because go build, from v1.18, embeds version control
+        // information and the command fails if `-bildvcs=false` isn't set. We don't want to pass the
+        // command-line flag because then it would fail when using a previous Go version.
+        // Copying and building from a copy it doesn't work because it's a git submodule, hence it uses
+        // a relative path to the superproject unless that the destination path is under the same
+        // parent tree directory and with the same depth.
+        Command::new("make")
+            .arg("build")
+            .current_dir(&uplink_c_src)
+            .status()
+            .expect("Failed to run make command from build.rs.");
+    }
 
     // Directory containing uplink-c project for building
     let uplink_c_dir = out_dir.join("uplink-c");
@@ -35,14 +39,26 @@ fn main() {
         .status()
         .expect("Failed to copy uplink-c directory.");
 
-    // Delete the generated build files for avoiding `cargo publish` to complain about modifying
-    // things outside of the OUT_DIR.
-    Command::new("rm")
-        .args(&["-r", &uplink_c_src.join(".build").to_string_lossy()])
-        .status()
-        .expect("Failed to delete  uplink-c/.build directory.");
+    if env::var("DOCS_RS").is_ok() {
+        // Use the precompiled uplink-c libraries for building the docs by docs.rs.
+        Command::new("cp")
+            .args(&[
+                "-R",
+                &PathBuf::from(".docs-rs").to_string_lossy(),
+                &uplink_c_dir.join(".build").to_string_lossy(),
+            ])
+            .status()
+            .expect("Failed to copy docs-rs precompiled uplink-c lib binaries");
+    } else {
+        // Delete the generated build files for avoiding `cargo publish` to complain about modifying
+        // things outside of the OUT_DIR.
+        Command::new("rm")
+            .args(&["-r", &uplink_c_src.join(".build").to_string_lossy()])
+            .status()
+            .expect("Failed to delete  uplink-c/.build directory.");
+    }
 
-    // Directory containting uplink-c build
+    // Directory containing uplink-c build
     let uplink_c_build = uplink_c_dir.join(".build");
 
     // Header file with complete API interface
