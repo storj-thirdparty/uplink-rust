@@ -1,11 +1,21 @@
+# Custom variables #
+
 UPLINK_C = uplink-c
 
-.PHONY: default
-default: build
+# Makefile special variables #
+
+.DEFAULT_GOAL := build
+
+# Targets #
 
 .PHONY: build
 build: $(UPLINK_C)/.git
 	cargo build
+
+.PHONY: lint
+lint:
+	cargo fmt --check
+	cargo clippy -- -D clippy::all
 
 .PHONY: test
 test: $(UPLINK_C)/.git
