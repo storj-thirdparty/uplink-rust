@@ -33,6 +33,11 @@ jobs:
       #run: find . | grep "\.rs$" | xargs touch ; cargo clippy --workspace -- -D clippy::all
     - name: Build
       run: make build
+    - name: Check lib binaries for docs.rs
+      run: | # The way how to check if the libs are have to date with only comparing libuplink.pc isn't ideal but it's what we have found that works.
+        make update-libs-docs-rs
+        test -z $(git ls-files -d -m -o .docs-rs/libuplink.pc) || (printf "the uplink-c library binaries for docs.rs aren't up to date. Update them with `make update-libs-docs-rs`\n" && exit 1)
+        git clean -fd && git checkout .
     - name: Create secrets for tests
       run: printf "${{ secrets.STORJ_TEST_SAT_ADDRESS }}\n${{ secrets.STORJ_TEST_API_KEY }}\n${{ secrets.STORJ_TEST_PASSPHRASE }}" > test_secrets.txt
     - name: Test
