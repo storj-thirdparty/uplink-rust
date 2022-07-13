@@ -217,7 +217,7 @@ pub struct Info<'a> {
     /// The system metadata associated to the upload.
     pub metadata_system: metadata::System,
     /// The custom metadata associated to the upload.
-    metadata_custom: metadata::Custom,
+    pub metadata_custom: metadata::Custom,
 }
 
 impl Info<'_> {

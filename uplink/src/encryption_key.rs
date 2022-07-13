@@ -40,7 +40,7 @@ impl EncryptionKey {
             )
         };
 
-        (&uc_res).ensure();
+        uc_res.ensure();
 
         if let Some(err) = Error::new_uplink(uc_res.error) {
             // SAFETY: we trust the FFI is safe freeing the memory of a valid pointer.
