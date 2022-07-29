@@ -10,7 +10,7 @@
 #![deny(missing_docs)]
 
 pub mod access;
-pub(crate) mod bucket;
+pub mod bucket;
 pub(crate) mod config;
 pub mod docs;
 pub mod edge;
@@ -18,7 +18,7 @@ pub(crate) mod encryption_key;
 pub mod error;
 pub(crate) mod helpers;
 pub mod metadata;
-pub(crate) mod object;
+pub mod object;
 pub mod project;
 mod uplink_c;
 

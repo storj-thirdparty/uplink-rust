@@ -280,9 +280,13 @@ impl Info<'_> {
 
 /// Metadata associated to an upload part of a multipart upload operation.
 pub struct Part {
+    /// The number of the part.
     pub part_number: u32,
+    /// Plain size of the part
     pub size: usize,
+    /// When the part was modified.
     pub modified: time::Duration,
+    /// The entity tag of the part.
     pub etag: Vec<u8>,
 }
 
