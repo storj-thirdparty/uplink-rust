@@ -1,5 +1,10 @@
 # Storj Uplink Library for Rust
 
+[![CI Status](https://img.shields.io/github/workflow/status/storj-thirdparty/uplink-rust/uplink?style=for-the-badge)](https://github.com/storj-thirdparty/uplink-rust/actions/workflows/uplink.yml)
+[![crates.io](https://img.shields.io/crates/v/uplink.svg?style=for-the-badge)](https://crates.io/crates/uplink)
+[![docs.rs](https://img.shields.io/docsrs/uplink?style=for-the-badge)](https://docs.rs/uplink)
+![Crates.io](https://img.shields.io/crates/d/uplink?style=for-the-badge)
+
 Safe and idiomatic Rust crate library for the [Storj Uplink Library][storj-uplink].
 
 ## Current status
@@ -90,7 +95,7 @@ Integration tests:
 
 General:
 
-- [ ] Add a CI solution (Travis, Github actions, etc.) for running tests,
+- [X] Add a CI solution (Travis, Github actions, etc.) for running tests,
       linters on every PR and when something is merge into the `main` branch.
 - [ ] Add general documentation about the Storj network and its entities
       mimicking the original [Go Uplink package](https://pkg.go.dev/storj.io/uplink#section-documentation).
