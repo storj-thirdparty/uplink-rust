@@ -70,24 +70,25 @@ Integration tests:
 - [ ] Access Grant.
   - [ ] Create.
   - [ ] Request an Access Grant with passphrase.
-  - [ ] Parse one.
+  - [X] Parse one.
   - [ ] Share one.
   - [ ] Override an encryption key of a specific Bucket and prefix.
 - [ ] Project
-  - [ ] Create a Bucket.
+  - [X] Create a Bucket.
   - [ ] Try to create a Bucket which already exists.
   - [ ] Ensure a Bucket, an existing and non-existing one.
   - [ ] Stat a Bucket.
-  - [ ] List Buckets.
-  - [ ] Upload an Object.
+  - [X] List Buckets.
+  - [X] Upload an Object.
   - [ ] Upload an Object with Custom Metadata.
   - [ ] Multipart upload.
-  - [ ] Download an Object.
+  - [X] Download an Object.
   - [ ] Stat an Object.
-  - [ ] List Objects with and without System and Custom Metadata.
+  - [X] List Objects with System and Custom Metadata.
+  - [ ] List Objects without System and Custom Metadata.
   - [ ] Move an object.
-  - [ ] Delete an Object.
-  - [ ] Delete an empty Bucket.
+  - [X] Delete an Object.
+  - [X] Delete an empty Bucket.
   - [ ] Delete a Bucket with objects.
 - [ ] Edge.
   - [ ] Join a share URL.
