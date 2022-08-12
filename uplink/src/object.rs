@@ -8,14 +8,14 @@ use crate::error::BoxError;
 use crate::uplink_c::Ensurer;
 use crate::{metadata, Error, Result};
 
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 
 use uplink_sys as ulksys;
 
 /// Contains information about an object.
-pub struct Object<'a> {
+pub struct Object {
     /// The identifier of the object inside of the bucket which it belongs.
-    pub key: &'a str,
+    pub key: String,
     /// Indicates if the key is a prefix for other objects.
     pub is_prefix: bool,
     /// The system metadata associated with the object.
@@ -24,7 +24,7 @@ pub struct Object<'a> {
     pub metadata_custom: metadata::Custom,
 }
 
-impl Object<'_> {
+impl Object {
     /// Creates new instance from the FFI representation.
     ///
     /// An [`Error::Internal`](crate::Error::Internal) if `uc_obj`'s key contains invalid UTF-8
@@ -37,14 +37,15 @@ impl Object<'_> {
         let uc_obj = unsafe { *uc_obj_ptr };
         uc_obj.ensure();
 
-        let key: &str;
-        let is_prefix: bool;
+        let key;
+        let is_prefix;
         let metadata_system: metadata::System;
         let metadata_custom: metadata::Custom;
         // SAFETY: we have check that the `uc_obj` doesn't have fields with NULL pointers through
         // the `ensure` method.
         unsafe {
-            key = CStr::from_ptr(uc_obj.key).to_str().map_err(|err| {
+            let cs = CString::from(CStr::from_ptr(uc_obj.key));
+            key = cs.into_string().map_err(|err| {
                 ulksys::uplink_free_object(uc_obj_ptr);
                 Error::new_internal(
                     "FFI returned an invalid object's key; it contains invalid UTF-8 characters",
@@ -135,8 +136,8 @@ impl Iterator {
     }
 }
 
-impl<'a> std::iter::Iterator for &'a Iterator {
-    type Item = Result<Object<'a>>;
+impl std::iter::Iterator for Iterator {
+    type Item = Result<Object>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // SAFETY: we trust that the FFI functions don't panic when called with an instance returned
