@@ -3,20 +3,20 @@
 use crate::uplink_c::Ensurer;
 use crate::{Error, Result};
 
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::time::Duration;
 
 use uplink_sys as ulksys;
 
 /// Contains information about a specific bucket.
-pub struct Bucket<'a> {
+pub struct Bucket {
     /// Name of the bucket.
-    pub name: &'a str,
+    pub name: String,
     /// Unix Epoch time when the bucket was created.
     pub created_at: Duration,
 }
 
-impl<'a> Bucket<'a> {
+impl Bucket {
     /// Creates a Bucket instance from the type exposed by the FFI.
     ///
     /// It returns an [`Error:Internal`](crate::Error::Internal) if `uc_bucket`'s name invalid
@@ -32,7 +32,7 @@ impl<'a> Bucket<'a> {
         let uc_bucket = unsafe { *uc_bucket_ptr };
         uc_bucket.ensure();
 
-        let name: &str;
+        let name;
         let created_at: Duration;
         // SAFETY: we have check that the `uc_bucket` doesn't have fields with NULL pointers through
         // the `ensure` method.
@@ -42,7 +42,8 @@ impl<'a> Bucket<'a> {
             // panic if they contain some and we return an internal error because we see it's a
             // limitation of Rust and C interoperability and consumers of this crate would have a
             // chance to deal with them appropriately.
-            name = CStr::from_ptr(uc_bucket.name).to_str().map_err(|err| {
+            let cs = CString::from(CStr::from_ptr(uc_bucket.name));
+            name = cs.into_string().map_err(|err| {
                 ulksys::uplink_free_bucket(uc_bucket_ptr);
                 Error::new_internal(
                     "FFI returned an invalid bucket's name; it contains invalid UTF-8 characters",
@@ -99,8 +100,8 @@ impl Iterator {
     }
 }
 
-impl<'a> std::iter::Iterator for &'a Iterator {
-    type Item = Result<Bucket<'a>>;
+impl std::iter::Iterator for Iterator {
+    type Item = Result<Bucket>;
 
     /// It returns an:
     ///
