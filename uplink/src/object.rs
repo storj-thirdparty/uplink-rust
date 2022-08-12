@@ -6,7 +6,7 @@ pub use upload::Upload;
 
 use crate::error::BoxError;
 use crate::uplink_c::Ensurer;
-use crate::{metadata, Error, Result};
+use crate::{error, metadata, Error, Result};
 
 use std::ffi::{CStr, CString};
 
@@ -217,19 +217,41 @@ impl std::io::Read for Download {
     /// When it returns an error is always a [`std::io::ErrorKind::Other`] and the error payload is
     /// an [`Error::Uplink`].
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let bp = buf.as_mut_ptr();
-        // SAFETY: we trust the FFI of dealing with a correct `UplinkDownload` instance and an
-        // allocated buffer.
-        let read_res = unsafe {
-            ulksys::uplink_download_read(self.inner.download, bp.cast(), buf.len() as u64)
-        };
+        // Retry in case that zero bytes are read but no error is returned. We retry 3 times for
+        // being safe of not looping infinitely despite 1 retry should always be enough.
+        // See Uplink issue: https://github.com/storj/uplink/issues/99.
+        for _ in 1..3 {
+            let bp = buf.as_mut_ptr();
+            // SAFETY: we trust the FFI of dealing with a correct `UplinkDownload` instance and an
+            // allocated buffer.
+            let read_res = unsafe {
+                ulksys::uplink_download_read(self.inner.download, bp.cast(), buf.len() as u64)
+            };
 
-        if let Some(err) = Error::new_uplink(read_res.error) {
-            use std::io::{Error as IOErr, ErrorKind};
-            return Err(IOErr::new(ErrorKind::Other, err));
+            if let Some(err) = Error::new_uplink(read_res.error) {
+                // According to the Uplink C bindings version that we are targeting v1.7.0 all the
+                // errors are mapped to an specific exported code, except EOF, see
+                // https://github.com/storj/uplink-c/blob/v1.7.0/error.go#L37
+                // The `ulksys::uplink_download_read` always use the error mapping function
+                // (`mallocError`), hence, we can assume that an unknown error is the EOF error.
+                //
+                // Although EOF is usually -1 it's platform-dependent of the C standard library, so
+                // it looks safer an better to compare with 'Unknown' variant than relying in -1
+                // comparison or adding libc as a direct dependency of this crate.
+                if let Error::Uplink(error::Uplink::Unknown(_)) = err {
+                    return Ok(read_res.bytes_read as usize);
+                }
+
+                use std::io::{Error as IOErr, ErrorKind};
+                return Err(IOErr::new(ErrorKind::Other, err));
+            }
+
+            if read_res.bytes_read != 0 {
+                return Ok(read_res.bytes_read as usize);
+            }
         }
 
-        Ok(read_res.bytes_read as usize)
+        Ok(0)
     }
 }
 
