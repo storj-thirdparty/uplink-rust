@@ -22,12 +22,29 @@ jobs:
     steps:
       - name: Checkouts repository
         uses: actions/checkout@v2
-      - name: build-uplink-sys
+      - name: Build uplink-sys
         run: make build
         working-directory: .
-      - name: lint
+      - name: Lint
         run: make lint
         env:
           RUST_BACKTRACE: full
-      - name: test
+      - name: Clean up
+        if: always()
+        run: make clean
+  test-implementation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: uplink
+    steps:
+      - name: Checkouts repository
+        uses: actions/checkout@v2
+      - name: Build uplink-sys
+        run: make build
+        working-directory: .
+      - name: Run tests
         run: make test
+      - name: Clean up
+        if: always()
+        run: make clean
