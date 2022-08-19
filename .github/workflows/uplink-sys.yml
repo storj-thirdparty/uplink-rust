@@ -25,7 +25,7 @@ jobs:
       uses: actions/checkout@v2
     - name: Checkout Submodules
       run: git submodule update --init
-    - name: lint
+    - name: Lint
       run: make lint
     # Clippy
     #- name: clippy

@@ -24,6 +24,20 @@ production yet.
 This crate wraps the `uplink-sys` crate present in this same repository for
 offering an safe and idiomatic Rust [Storj Uplink][storj-uplink].
 
+Because it relies on `uplink-sys` and `uplink-sys` requires [Go](https://golang.org),
+using this crate also requires Go.
+
+### Development requirements
+
+For development the only requirements are Rust and Go.
+
+For running the integration tests you need a Docker version that has the `compose`
+command, which is the `docker-compose` tool that it's now integrated in Docker.
+The command is needed because the Makefile invoked, but you should be able to
+use a Docker version without the `compose` command,  using the `docker-compose`,
+however, you will have to run by hand or make an straightforward change in the
+Makefile.
+
 ### Development plan and status
 
 General entities:
