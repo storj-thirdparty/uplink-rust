@@ -1,7 +1,9 @@
 # uplink-sys
 
-[![Actions Status](https://github.com/storj-thirdparty/uplink-rust/workflows/uplink-sys/badge.svg)](https://github.com/storj-thirdparty/uplink-rust/actions)
-[![Crates.io](https://img.shields.io/crates/v/uplink-sys)](https://crates.io/crates/uplink-sys)
+[![CI Status](https://img.shields.io/github/workflow/status/storj-thirdparty/uplink-rust/uplink-sys?style=for-the-badge)](https://github.com/storj-thirdparty/uplink-rust/actions/workflows/uplink-sys.yml)
+[![Crates.io](https://img.shields.io/crates/v/uplink-sys?style=for-the-badge)](https://crates.io/crates/uplink-sys)
+[![docs.rs](https://img.shields.io/docsrs/uplink-sys?style=for-the-badge)](https://docs.rs/uplink-sys)
+![Crates.io](https://img.shields.io/crates/d/uplink-sys?style=for-the-badge)
 
 This crate provides auto-generated unsafe Rust bindings, through [bindgen](https://github.com/rust-lang/rust-bindgen/), to C functions provided by [uplink-c](https://github.com/storj/uplink-c/), the C interface for the Storj uplink API library.
 
