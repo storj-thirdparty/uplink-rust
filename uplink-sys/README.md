@@ -7,8 +7,10 @@
 
 This crate provides auto-generated unsafe Rust bindings, through [bindgen](https://github.com/rust-lang/rust-bindgen/), to C functions provided by [uplink-c](https://github.com/storj/uplink-c/), the C interface for the Storj uplink API library.
 
-# Building (from repo)
-## Linux
+## Building (from repo)
+
+### Linux
+
  - Install [Go](https://golang.org/doc/install)
  - Install [Rust](https://www.rust-lang.org/tools/install)
  - Install GCC and make
@@ -19,20 +21,23 @@ This crate provides auto-generated unsafe Rust bindings, through [bindgen](https
  - Build crate
   `make build` (from `uplink-sys` directory)
 
-## macOS
+### macOS
+
  - Install [Go](https://golang.org/doc/install)
  - Install [Rust](https://www.rust-lang.org/tools/install)
  - Checkout this repo
  - Build crate
   `make build` (from `uplink-sys` directory)
 
-# Building (from crates.io) (TODO ONCE CRATE IS PUBLISHED)
-## Linux
+## Building (from crates.io)
+
+### Linux
+
  - Install [Go](https://golang.org/doc/install)
  - Install libclang (required by bindgen for generating platform specific c bindings)
- - Add uplink-sys to Cargo.toml
+ - Add [uplink-sys](https://crates.io/crates/uplink-sys) to Cargo.toml
 
-# Tests
+## Tests
 
 __NOTE__ the project has been tested on the following operating systems:
 ```
@@ -44,7 +49,8 @@ __NOTE__ the project has been tested on the following operating systems:
 	* Processor: 2.6 GHz 6-Core Intel Corei7
 ```
 
-## Setup
+### Setup
+
 To allow the integrations tests access to the test project, create a file in this directory with the satellite address and api key for running tests.
 Do not commit this file to the repo.
 `test_secrets.txt`:
@@ -52,10 +58,13 @@ Do not commit this file to the repo.
 <satellite_addresss>
 <api_key>
 ```
-## Run
+
+### Run
+
 `make test`
 
-# Usage
+## Usage
+
 See the [examples directory](https://github.com/storj-thirdparty/uplink-rust/tree/main/uplink-sys/examples) to see how use the `uplink-sys` crate.
 
 Below is an example showing how to list buckets using the crate's unsafe C bindings.
