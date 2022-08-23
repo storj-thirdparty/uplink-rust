@@ -81,15 +81,11 @@ fn integration_create_upload_list_download_delete() {
         "downloaded object created at",
     );
 
-    let downloaded_object_data = &mut vec![0; object_data.len()];
+    let mut downloaded_object_data = String::new();
     download
-        .read(downloaded_object_data)
+        .read_to_string(&mut downloaded_object_data)
         .expect("download object read");
-    assert_eq!(
-        object_data,
-        String::from_utf8_lossy(downloaded_object_data),
-        "object data"
-    );
+    assert_eq!(object_data, downloaded_object_data, "object data");
 
     let deleted_object = project
         .delete_object(&bucket_name, object_key)
