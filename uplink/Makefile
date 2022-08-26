@@ -55,6 +55,9 @@ tests/.tmp/up/storj-up: tests/.tmp/up
 tests/.tmp/up:
 	mkdir -p tests/.tmp
 	cd tests/.tmp; git clone https://github.com/storj/up.git
+	# Checkout this commit because storj-up was working fine, the latest commit in
+	# main at this time is broken.
+	cd tests/.tmp/up; git checkout 37026d04259495be27d978a6950fae3205322be1
 
 ## Publish crate ##
 .PHONY: publish-test
