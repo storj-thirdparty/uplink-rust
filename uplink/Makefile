@@ -49,9 +49,6 @@ integration-tests-env-up:
 .integration-tests-env-down:
 	cd tests; docker compose down
 
-tests/.tmp/integration-tests-env-vars:
-
-
 tests/.tmp/up/storj-up: tests/.tmp/up
 	cd tests/.tmp/up; go build -o storj-up
 
