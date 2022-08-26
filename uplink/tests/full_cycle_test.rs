@@ -1,3 +1,4 @@
+use std::io::{Read, Write};
 use std::time::Duration;
 
 use uplink::access::Grant;
@@ -7,8 +8,6 @@ mod common;
 
 #[test]
 fn integration_create_upload_list_download_delete() {
-    use std::io::{Read, Write};
-
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
     let project = &mut Project::open(access_grant);
@@ -38,7 +37,7 @@ fn integration_create_upload_list_download_delete() {
     );
 
     let object_key = "test-data.txt";
-    let mut upload = project
+    let upload = &mut project
         .upload_object(&bucket_name, object_key, None)
         .expect("upload object");
 
