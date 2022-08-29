@@ -25,9 +25,12 @@ pub struct Project {
 
 impl Project {
     /// Opens a project with the specified access grant.
-    pub fn open(grant: Grant) -> Self {
-        // SAFETY: we trust the FFI is behaving correctly when called with correct
-        // value.
+    pub fn open(grant: &Grant) -> Self {
+        // SAFETY: we trust the FFI is behaving correctly when called with correct value.
+        // The `grant.as_ffi_access` return a pointer to its FFI representation that only lives as
+        // long as `grant` but we don't need to take ownership of `grant` because the FFI access is
+        // only a handler, not the actual access value, so `grant` can be dropped without affecting
+        // the FFI project instance.
         let inner = unsafe { ulksys::uplink_open_project(grant.as_ffi_access()) };
         Self { inner }
     }

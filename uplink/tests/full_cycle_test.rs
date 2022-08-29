@@ -10,7 +10,7 @@ mod common;
 fn integration_create_upload_list_download_delete() {
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(access_grant);
+    let project = &mut Project::open(&access_grant);
 
     let bucket_name = common::generate_name("full-cycle");
     let (created_bucket, ok) = project.create_bucket(&bucket_name).expect("create bucket");
