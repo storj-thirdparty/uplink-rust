@@ -173,25 +173,45 @@ impl Grant {
     /// enough information to allow access to just those prefixes.
     ///
     /// To revoke an access grant see [`Project.revoke_access()`](../project/struct.Project.html#method.revoke_access).
-    pub fn share(&self, permission: &Permission, prefixes: Vec<SharePrefix>) -> Result<Grant> {
-        let mut ulk_prefixes: Vec<ulksys::UplinkSharePrefix> = Vec::with_capacity(prefixes.len());
+    pub fn share(
+        &self,
+        permission: &Permission,
+        prefixes: Option<Vec<SharePrefix>>,
+    ) -> Result<Grant> {
+        let res;
+        if let Some(prefix_list) = prefixes {
+            let mut ulk_prefixes: Vec<ulksys::UplinkSharePrefix> =
+                Vec::with_capacity(prefix_list.len());
 
-        for sp in prefixes {
-            ulk_prefixes.push(sp.as_ffi_share_prefix())
+            for sp in prefix_list {
+                ulk_prefixes.push(sp.as_ffi_share_prefix())
+            }
+
+            // SAFETY: it's safe to pass the vector to the FFI function because it makes copies of it
+            // to return the result so the result will still valid when the call to this method ends
+            // which is when the vector will be dropped.
+            res = unsafe {
+                *ulksys::uplink_access_share(
+                    self.inner.access,
+                    permission.to_ffi_permissions(),
+                    ulk_prefixes.as_mut_ptr(),
+                    ulk_prefixes.len() as i64,
+                )
+                .ensure()
+            };
+        } else {
+            // SAFETY: it's safe to pass nil to the FFI function to indicate that there isn't any
+            // prefix restriction.
+            res = unsafe {
+                *ulksys::uplink_access_share(
+                    self.inner.access,
+                    permission.to_ffi_permissions(),
+                    std::ptr::null_mut(),
+                    0,
+                )
+                .ensure()
+            };
         }
-
-        // SAFETY: it's safe to pass the vector to the FFI function because it makes copies of it
-        // to return the result so the result will still valid when the call to this method ends
-        // which is when the vector will be dropped.
-        let res = unsafe {
-            *ulksys::uplink_access_share(
-                self.inner.access,
-                permission.to_ffi_permissions(),
-                ulk_prefixes.as_mut_ptr(),
-                ulk_prefixes.len() as i64,
-            )
-            .ensure()
-        };
 
         Self::from_ffi_access_result(res)
     }
@@ -232,6 +252,12 @@ impl<'a> SharePrefix<'a> {
             prefix,
             c_prefix,
         })
+    }
+
+    /// Create a new share prefix that shares all the content of the bucket.
+    /// It returns an error if bucket contains a null character (0 byte).
+    pub fn full_bucket(bucket: &'a str) -> Result<Self> {
+        Self::new(bucket, "")
     }
 
     /// Returns the bucket where the prefix to be shared belongs.
