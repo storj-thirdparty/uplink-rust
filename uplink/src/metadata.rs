@@ -15,7 +15,7 @@ use uplink_sys as ulksys;
 /// By convention an application that stores metadata should prepend to the keys
 /// a prefix, for example an application named "Image Board" might use the
 /// "image-board:" prefix and a key could be "image-board:title".
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Custom {
     /// The key-value pairs.
     entries: HashMap<String, String>,
@@ -138,6 +138,7 @@ impl Clone for Custom {
 /// It allows to create an [`uplink_sys::UplinkCustomMetadata`] instance that
 /// guards the used memory of its list of items during the lifetime of the
 /// instance of this struct.
+#[derive(Debug)]
 struct UplinkCustomMetadataWrapper {
     /// The [`uplink_sys::UplinkCustomMetadata`] instance that `self`
     /// represents.
@@ -190,6 +191,7 @@ impl Default for UplinkCustomMetadataWrapper {
 
 /// It's a container of system information of a specific "item".
 /// It's provided by the service and only the service can alter it.
+#[derive(Debug)]
 pub struct System {
     /// When the associated "item" was created.
     ///

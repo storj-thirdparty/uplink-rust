@@ -13,6 +13,7 @@ use std::ffi::{CStr, CString};
 use uplink_sys as ulksys;
 
 /// Contains information about an object.
+#[derive(Debug)]
 pub struct Object {
     /// The identifier of the object inside of the bucket which it belongs.
     pub key: String,
