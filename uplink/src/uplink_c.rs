@@ -189,9 +189,9 @@ impl Ensurer for ulksys::EdgeCredentialsResult {
 /// * [Internal error](crate::error::Internal) if the string contains invalid UTF-8 characters.
 ///
 /// It takes ownership of `ffi_result`, hence this function frees `ffi_result` before returning.
-pub(crate) fn string_from_ffi_string_result<'a>(
+pub(crate) fn string_from_ffi_string_result(
     ffi_result: ulksys::UplinkStringResult,
-) -> Result<&'a str> {
+) -> Result<String> {
     ffi_result.ensure();
 
     if let Some(e) = Error::new_uplink(ffi_result.error) {
@@ -205,23 +205,19 @@ pub(crate) fn string_from_ffi_string_result<'a>(
     let c_str;
     // SAFETY: we have checked that `ffi_result` is valid and it doesn't have an error so the
     // `string` field isn't `NULL`.
-    // We are taking ownership of the `string` field so it's safe to free the memory of
-    // `ffi_result`.
     unsafe {
         c_str = CStr::from_ptr(ffi_result.string);
-        ulksys::uplink_free_string_result(ffi_result);
     };
 
-    let res = c_str.to_str().map_err(|err| {
+    let res = String::from_utf8(Vec::from(c_str.to_bytes())).map_err(|err| {
         Error::new_internal(
             "FFI returned an invalid string; it contains invalid UTF-8 characters",
             err.into(),
         )
     });
-
-    // SAFETY: we trust the FFI is safe freeing the memory of a valid  value instantiated by the
-    // same FFI.
+    // SAFETY: we have copied the C string in the previous call, so we can free pointer safely.
     unsafe { ulksys::uplink_free_string_result(ffi_result) };
+
     res
 }
 

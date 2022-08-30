@@ -145,7 +145,7 @@ impl Grant {
     }
 
     /// Returns the satellite node URL associated with this access grant.
-    pub fn satellite_address(&self) -> Result<&str> {
+    pub fn satellite_address(&self) -> Result<String> {
         // SAFETY: we have checked that the FFI value attached to this instance is valid at its
         // construction time.
         let res = unsafe { ulksys::uplink_access_satellite_address(self.inner.access) };
@@ -155,7 +155,7 @@ impl Grant {
 
     /// Serializes an access grant such that it can be used to create a [`Self::new()`] instance of
     /// this type or parsed with other tools.
-    pub fn serialize(&self) -> Result<&str> {
+    pub fn serialize(&self) -> Result<String> {
         // SAFETY: we have checked that the FFI value attached to this instance is valid at its
         // construction time.
         let res = unsafe { ulksys::uplink_access_serialize(self.inner.access) };

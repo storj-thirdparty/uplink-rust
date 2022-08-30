@@ -20,13 +20,13 @@ use uplink_sys as ulksys;
 ///   project.
 /// * The `key` is the object key to share; set it to empty for sharing the entire bucket. It
 ///   accepts to be a prefix but then it has to end with `/`.
-pub fn share_url<'a>(
+pub fn share_url(
     base_url: &str,
     access_key_id: &str,
     bucket: &str,
     key: &str,
     opts: Option<OptionsShareURL>,
-) -> Result<&'a str> {
+) -> Result<String> {
     let base_url = helpers::cstring_from_str_fn_arg("base_url", base_url)?;
     let access_key = helpers::cstring_from_str_fn_arg("access_key_id", access_key_id)?;
     let bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
