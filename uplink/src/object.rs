@@ -115,10 +115,12 @@ impl Object {
         // for the `uc_result` does (i.e. call a free specific function for each pointer returning
         // without doing anything if it's `NULL`).
         Self::from_ffi_object(uc_result.object)
+            .map(|op| op.expect("successful committed upload must always return an object"))
     }
 }
 
 /// Iterates over a collection of objects' information.
+#[derive(Debug)]
 pub struct Iterator {
     /// The object iterator type of the FFI that an instance of this struct represents and guards
     /// its lifetime until the instance drops.
@@ -168,6 +170,7 @@ impl Drop for Iterator {
 }
 
 /// Represents a download object operation from Storj DCS network.
+#[derive(Debug)]
 pub struct Download {
     /// The download type of the FFI than an instance of this struct represents and guards its
     /// lifetime until the instance drops.

@@ -10,6 +10,7 @@ use std::vec::Vec;
 use uplink_sys as ulksys;
 
 /// Allows to upload the object's data to the Storj DCS network.
+#[derive(Debug)]
 pub struct Upload {
     /// The upload type of the FFI that an instance of this struct represents and guards its life
     /// time until the instances drops.
