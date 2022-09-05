@@ -183,8 +183,8 @@ impl Grant {
             let mut ulk_prefixes: Vec<ulksys::UplinkSharePrefix> =
                 Vec::with_capacity(prefix_list.len());
 
-            for sp in prefix_list {
-                ulk_prefixes.push(sp.as_ffi_share_prefix())
+            for sp in &prefix_list {
+                ulk_prefixes.push(sp.as_ffi_share_prefix());
             }
 
             // SAFETY: it's safe to pass the vector to the FFI function because it makes copies of it
