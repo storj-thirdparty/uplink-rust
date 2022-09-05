@@ -85,7 +85,7 @@ Integration tests:
   - [ ] Create.
   - [ ] Request an Access Grant with passphrase.
   - [X] Parse one.
-  - [ ] Share one.
+  - [X] Share one.
   - [ ] Override an encryption key of a specific Bucket and prefix.
 - [ ] Project
   - [X] Create a Bucket.
