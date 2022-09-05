@@ -52,3 +52,11 @@ pub fn assert_epoch_timestamp_from_now<'a>(
         ctx_msg,
     );
 }
+
+/// Get numbers of seconds since UNIX epoch at the time to call this function.
+pub fn seconds_since_unix_epoch() -> u64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("system time since Unix epoch failed")
+        .as_secs()
+}
