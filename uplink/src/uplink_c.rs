@@ -50,7 +50,10 @@ impl Ensurer for ulksys::UplinkBucketResult {
 
 impl Ensurer for ulksys::UplinkCommitUploadResult {
     fn ensure(&self) -> &Self {
-        assert!(!self.object.is_null() || !self.error.is_null(), "FFI returned an invalid UplinkCommitUploadResult; object and error fields are both NULL");
+        assert!(
+            !self.object.is_null() || !self.error.is_null(),
+            "FFI returned an invalid UplinkCommitUploadResult; object and error fields are both NULL"
+        );
         self
     }
 }
@@ -67,7 +70,10 @@ impl Ensurer for ulksys::UplinkDownloadResult {
 
 impl Ensurer for ulksys::UplinkEncryptionKeyResult {
     fn ensure(&self) -> &Self {
-        assert!(!self.encryption_key.is_null() || !self.error.is_null(), "FFI returned an invalid UplinkEncryptionKeyResult; encryption_key and error fields are both NULL");
+        assert!(
+            !self.encryption_key.is_null() || !self.error.is_null(),
+            "FFI returned an invalid UplinkEncryptionKeyResult; encryption_key and error fields are both NULL"
+        );
         self
     }
 }
@@ -79,16 +85,6 @@ impl Ensurer for ulksys::UplinkObject {
             "FFI returned an invalid UplinkObject; key field is NULL",
         );
 
-        self
-    }
-}
-
-impl Ensurer for ulksys::UplinkObjectResult {
-    fn ensure(&self) -> &Self {
-        assert!(
-            !self.object.is_null() || !self.error.is_null(),
-            "FFI returned an invalid UplinkObjectResult; object and error fields are both NULL"
-        );
         self
     }
 }
@@ -105,7 +101,10 @@ impl Ensurer for ulksys::UplinkPartResult {
 
 impl Ensurer for ulksys::UplinkPartUploadResult {
     fn ensure(&self) -> &Self {
-        assert!(!self.part_upload.is_null() || !self.error.is_null(), "FFI returned an invalid UplinkPartUploadResult; part_upload and error fields are both NULL");
+        assert!(
+            !self.part_upload.is_null() || !self.error.is_null(),
+            "FFI returned an invalid UplinkPartUploadResult; part_upload and error fields are both NULL"
+        );
         self
     }
 }
@@ -572,82 +571,6 @@ mod test {
             },
         };
         obj.ensure();
-    }
-
-    #[test]
-    fn test_ensurer_object_result_valid() {
-        {
-            // Has an object.
-            let obj_res = ulksys::UplinkObjectResult {
-                object: &mut ulksys::UplinkObject {
-                    key: CString::new("key").unwrap().into_raw(),
-                    is_prefix: false,
-                    system: ulksys::UplinkSystemMetadata {
-                        created: 0,
-                        expires: 0,
-                        content_length: 0,
-                    },
-                    custom: ulksys::UplinkCustomMetadata {
-                        entries: ptr::null_mut(),
-                        count: 0,
-                    },
-                },
-                error: ptr::null_mut(),
-            };
-
-            obj_res.ensure();
-        }
-
-        {
-            // Has an error.
-            let obj_res = ulksys::UplinkObjectResult {
-                object: ptr::null_mut(),
-                error: &mut ulksys::UplinkError {
-                    code: 0,
-                    message: ptr::null_mut(),
-                },
-            };
-
-            obj_res.ensure();
-        }
-
-        {
-            // Has an object and an error.
-            let obj_res = ulksys::UplinkObjectResult {
-                object: &mut ulksys::UplinkObject {
-                    key: ptr::null_mut(),
-                    is_prefix: false,
-                    system: ulksys::UplinkSystemMetadata {
-                        created: 0,
-                        expires: 0,
-                        content_length: 0,
-                    },
-                    custom: ulksys::UplinkCustomMetadata {
-                        entries: ptr::null_mut(),
-                        count: 0,
-                    },
-                },
-                error: &mut ulksys::UplinkError {
-                    code: 0,
-                    message: ptr::null_mut(),
-                },
-            };
-
-            obj_res.ensure();
-        }
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "FFI returned an invalid UplinkObjectResult; object and error fields are both NULL"
-    )]
-    fn test_ensurer_object_result_invalid_both_null() {
-        let obj_res = ulksys::UplinkObjectResult {
-            object: ptr::null_mut(),
-            error: ptr::null_mut(),
-        };
-
-        obj_res.ensure();
     }
 
     #[test]
