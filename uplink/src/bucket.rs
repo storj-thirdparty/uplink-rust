@@ -9,6 +9,7 @@ use std::time::Duration;
 use uplink_sys as ulksys;
 
 /// Contains information about a specific bucket.
+#[derive(Debug)]
 pub struct Bucket {
     /// Name of the bucket.
     pub name: String,
