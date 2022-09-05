@@ -28,10 +28,15 @@ pub struct Object {
 impl Object {
     /// Creates new instance from the FFI representation.
     ///
+    /// When no error an `Option` is returned which is `None` when `uc_obj` is `NULL`. This happens
+    /// in some specific situations.
+    ///
     /// An [`Error::Internal`](crate::Error::Internal) if `uc_obj`'s key contains invalid UTF-8
     /// characters or [`metadata::Custom::with_ffi_custom_metadata`] return an error.
-    fn from_ffi_object(uc_obj: *mut ulksys::UplinkObject) -> Result<Self> {
-        assert!(!uc_obj.is_null(), "BUG: `uc_obj` argument cannot be NULL");
+    fn from_ffi_object(uc_obj: *mut ulksys::UplinkObject) -> Result<Option<Self>> {
+        if uc_obj.is_null() {
+            return Ok(None);
+        }
 
         let uc_obj_ptr = uc_obj;
         // SAFETY: We have checked just above that the pointer isn't NULL.
@@ -59,15 +64,17 @@ impl Object {
             ulksys::uplink_free_object(uc_obj_ptr);
         }
 
-        Ok(Self {
+        Ok(Some(Self {
             key,
             is_prefix,
             metadata_system,
             metadata_custom,
-        })
+        }))
     }
 
     /// Creates a new instance from the FFI representation for an object's result.
+    ///
+    /// See [`from_ffi_object`] why an `Option` is returned when result is OK.
     ///
     /// It returns the following errors:
     /// * an [`Error::new_uplink` constructor](crate::Error::new_uplink), if `uc_result` contains a
@@ -75,9 +82,9 @@ impl Object {
     /// * an [`Error::Internal`](crate::Error::Internal) if `uc_result.object`'s key contains
     ///   invalid UTF-8 characters or [`metadata::Custom::with_ffi_custom_metadata`] return an
     ///   error.
-    pub(crate) fn from_ffi_object_result(uc_result: ulksys::UplinkObjectResult) -> Result<Self> {
-        uc_result.ensure();
-
+    pub(crate) fn from_ffi_object_result(
+        uc_result: ulksys::UplinkObjectResult,
+    ) -> Result<Option<Self>> {
         if let Some(err) = Error::new_uplink(uc_result.error) {
             // SAFETY: we trust the FFI is safe freeing the memory of a valid pointer.
             unsafe { ulksys::uplink_free_object_result(uc_result) };
@@ -85,7 +92,7 @@ impl Object {
         }
 
         // At this point we don't need to free the `uc_result` because the following function free
-        // the `info` pointer and the `error` pointer is `NULL`, and that's what the free function
+        // the `object` pointer and the `error` pointer is `NULL`, and that's what the free function
         // for the `uc_result` does (i.e. call a free specific function for each pointer returning
         // without doing anything if it's `NULL`).
         Self::from_ffi_object(uc_result.object)
@@ -152,9 +159,11 @@ impl std::iter::Iterator for Iterator {
                 return Error::new_uplink(uc_error).map(Err);
             }
 
-            Some(Object::from_ffi_object(
-                ulksys::uplink_object_iterator_item(self.inner),
-            ))
+            Some(
+                Object::from_ffi_object(ulksys::uplink_object_iterator_item(self.inner)).map(
+                    |op| op.expect("an iterator that indicated that there is a next element always returns it")
+                ),
+            )
         }
     }
 }
@@ -211,6 +220,7 @@ impl Download {
         }
 
         Object::from_ffi_object(obj_res.object)
+            .map(|op| op.expect("successful download object info must always return an object"))
     }
 }
 

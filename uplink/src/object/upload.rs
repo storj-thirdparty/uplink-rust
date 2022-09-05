@@ -79,6 +79,7 @@ impl Upload {
         let uc_obj_res = unsafe { ulksys::uplink_upload_info(self.inner.upload) };
 
         Object::from_ffi_object_result(uc_obj_res)
+            .map(|op| op.expect("successful upload info must always return an object"))
     }
 
     /// Updates the custom metadata to be included with the object.

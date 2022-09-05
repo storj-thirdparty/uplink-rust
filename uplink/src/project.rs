@@ -190,6 +190,7 @@ impl Project {
         };
 
         Object::from_ffi_object_result(uc_res)
+            .map(|op| op.expect("successful copying an object must always return an object"))
     }
 
     /// Creates a new bucket.
@@ -254,7 +255,7 @@ impl Project {
     }
 
     /// Deletes the object inside of `bucket` and referenced with `key`.
-    pub fn delete_object(&self, bucket: &str, key: &str) -> Result<Object> {
+    pub fn delete_object(&self, bucket: &str, key: &str) -> Result<Option<Object>> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
 
@@ -527,6 +528,7 @@ impl Project {
         };
 
         Object::from_ffi_object_result(uc_res)
+            .map(|op| op.expect("successful stat object must always return an object"))
     }
 
     /// Starts an object upload into `bucket` with the specified `key` and optional options.

@@ -88,7 +88,8 @@ fn integration_create_upload_list_download_delete() {
 
     let deleted_object = project
         .delete_object(&bucket_name, object_key)
-        .expect("delete object");
+        .expect("delete object")
+        .expect("delete object with a grant with read permissions");
     assert_eq!(object_key, deleted_object.key, "deleted object key");
     assert!(!deleted_object.is_prefix, "deleted object is_prefix");
     assert_eq!(
