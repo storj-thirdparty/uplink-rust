@@ -88,9 +88,9 @@ Integration tests:
   - [X] Override an encryption key of a specific Bucket and prefix.
 - [ ] Project
   - [X] Create a Bucket.
-  - [ ] Try to create a Bucket which already exists.
-  - [ ] Ensure a Bucket, an existing and non-existing one.
-  - [ ] Stat a Bucket.
+  - [X] Try to create a Bucket which already exists.
+  - [X] Ensure a Bucket, an existing and non-existing one.
+  - [X] Stat a Bucket.
   - [X] List Buckets.
   - [X] Upload an Object.
   - [X] Upload an Object with Custom Metadata.
@@ -102,7 +102,7 @@ Integration tests:
   - [ ] Move an object.
   - [X] Delete an Object.
   - [X] Delete an empty Bucket.
-  - [ ] Delete a Bucket with objects.
+  - [X] Delete a Bucket with objects.
 - [ ] Edge.
   - [ ] Join a share URL.
   - [ ] Register an Access Grant.
