@@ -17,7 +17,7 @@ services:
       STORJ_METRICS_APP_SUFFIX: sim
       STORJ_ROLE: authservice
       STORJ_WAIT_FOR_SATELLITE: "true"
-    image: ghcr.io/elek/storj-edge:1.19.0
+    image: img.dev.storj.io/storjup/edge:1.36.0
     networks:
       default: null
     ports:
@@ -54,7 +54,7 @@ services:
       STORJ_METRICS_APP_SUFFIX: sim
       STORJ_SERVER_ADDRESS: 0.0.0.0:9999
       STORJ_WAIT_FOR_SATELLITE: "true"
-    image: ghcr.io/elek/storj-edge:1.19.0
+    image: img.dev.storj.io/storjup/edge:1.36.0
     networks:
       default: null
     ports:
@@ -73,7 +73,7 @@ services:
       STORJ_DEBUG_ADDR: 0.0.0.0:11111
       STORJ_PUBLIC_URL: http://linksharing:9090,http://localhost:9090
       STORJ_WAIT_FOR_SATELLITE: "true"
-    image: ghcr.io/elek/storj-edge:1.19.0
+    image: img.dev.storj.io/storjup/edge:1.36.0
     networks:
       default: null
     ports:
@@ -105,9 +105,14 @@ services:
       STORJ_METAINFO_DATABASE_URL: cockroach://root@cockroach:26257/metainfo?sslmode=disable
       STORJ_METRICS_APP_SUFFIX: sim
       STORJ_ORDERS_ENCRYPTION_KEYS: 0100000000000000=0100000000000000000000000000000000000000000000000000000000000000
+      STORJ_PAYMENTS_BILLING_CONFIG_DISABLE_LOOP: "false"
+      STORJ_PAYMENTS_STORJSCAN_AUTH_IDENTIFIER: us1
+      STORJ_PAYMENTS_STORJSCAN_AUTH_SECRET: us1secret
+      STORJ_PAYMENTS_STORJSCAN_DISABLE_LOOP: "false"
+      STORJ_PAYMENTS_STORJSCAN_ENDPOINT: http://storjscan:12000
       STORJ_ROLE: satellite-admin
       STORJ_WAIT_FOR_SATELLITE: "true"
-    image: ghcr.io/elek/storj:1.45.3
+    image: img.dev.storj.io/storjup/storj:1.62.4
     networks:
       default: null
     ports:
@@ -129,7 +134,7 @@ services:
       STORJ_CONSOLE_GATEWAY_CREDENTIALS_REQUEST_URL: http://localhost:8888
       STORJ_CONSOLE_LINKSHARING_URL: http://localhost:9090
       STORJ_CONSOLE_OPEN_REGISTRATION_ENABLED: "true"
-      STORJ_CONSOLE_RATE_LIMIT_BURST: "100"
+      STORJ_CONSOLE_RATE_LIMIT_BURST: "10000"
       STORJ_CONSOLE_STATIC_DIR: /var/lib/storj/storj/web/satellite/
       STORJ_DATABASE: cockroach://root@cockroach:26257/master?sslmode=disable
       STORJ_DEBUG_ADDR: 0.0.0.0:11111
@@ -144,13 +149,18 @@ services:
       STORJ_METAINFO_RATE_LIMITER_ENABLED: "false"
       STORJ_METRICS_APP_SUFFIX: sim
       STORJ_ORDERS_ENCRYPTION_KEYS: 0100000000000000=0100000000000000000000000000000000000000000000000000000000000000
+      STORJ_PAYMENTS_BILLING_CONFIG_DISABLE_LOOP: "false"
+      STORJ_PAYMENTS_STORJSCAN_AUTH_IDENTIFIER: us1
+      STORJ_PAYMENTS_STORJSCAN_AUTH_SECRET: us1secret
+      STORJ_PAYMENTS_STORJSCAN_DISABLE_LOOP: "false"
+      STORJ_PAYMENTS_STORJSCAN_ENDPOINT: http://storjscan:12000
       STORJ_ROLE: satellite-api
       STORJ_SERVER_ADDRESS: satellite-api:7777
       STORJ_SERVER_EXTENSIONS_REVOCATION: "false"
       STORJ_SERVER_REVOCATION_DBURL: redis://redis:6379?db=1
       STORJ_SERVER_USE_PEER_CA_WHITELIST: "false"
       STORJ_WAIT_FOR_DB: "true"
-    image: ghcr.io/elek/storj:1.45.3
+    image: img.dev.storj.io/storjup/storj:1.62.4
     networks:
       default: null
     ports:
@@ -181,9 +191,14 @@ services:
       STORJ_METAINFO_DATABASE_URL: cockroach://root@cockroach:26257/metainfo?sslmode=disable
       STORJ_METRICS_APP_SUFFIX: sim
       STORJ_ORDERS_ENCRYPTION_KEYS: 0100000000000000=0100000000000000000000000000000000000000000000000000000000000000
+      STORJ_PAYMENTS_BILLING_CONFIG_DISABLE_LOOP: "false"
+      STORJ_PAYMENTS_STORJSCAN_AUTH_IDENTIFIER: us1
+      STORJ_PAYMENTS_STORJSCAN_AUTH_SECRET: us1secret
+      STORJ_PAYMENTS_STORJSCAN_DISABLE_LOOP: "false"
+      STORJ_PAYMENTS_STORJSCAN_ENDPOINT: http://storjscan:12000
       STORJ_ROLE: satellite-core
       STORJ_WAIT_FOR_SATELLITE: "true"
-    image: ghcr.io/elek/storj:1.45.3
+    image: img.dev.storj.io/storjup/storj:1.62.4
     networks:
       default: null
   storagenode:
@@ -210,7 +225,7 @@ services:
       STORJ_STORAGE_ALLOCATED_DISK_SPACE: 1G
       STORJ_VERSION_SERVER_ADDRESS: http://versioncontrol:8080/
       STORJ_WAIT_FOR_SATELLITE: "true"
-    image: ghcr.io/elek/storj:1.45.3
+    image: img.dev.storj.io/storjup/storj:1.62.4
     networks:
       default: null
   uplink:
@@ -219,7 +234,7 @@ services:
     - infinity
     environment:
       STORJ_ROLE: uplink
-    image: ghcr.io/elek/storj:1.45.3
+    image: img.dev.storj.io/storjup/storj:1.62.4
     networks:
       default: null
   versioncontrol:
@@ -238,7 +253,7 @@ services:
       STORJ_DEFAULTS: dev
       STORJ_LOG_LEVEL: debug
       STORJ_METRICS_APP_SUFFIX: sim
-    image: ghcr.io/elek/storj:1.45.3
+    image: img.dev.storj.io/storjup/storj:1.62.4
     networks:
       default: null
     ports:
