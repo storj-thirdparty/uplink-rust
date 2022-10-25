@@ -81,12 +81,11 @@ Edge entities:
 
 Integration tests:
 
-- [ ] Access Grant.
-  - [ ] Create.
-  - [ ] Request an Access Grant with passphrase.
+- [X] Access Grant.
+  - [X] Request an Access Grant with passphrase.
   - [X] Parse one.
   - [X] Share one.
-  - [ ] Override an encryption key of a specific Bucket and prefix.
+  - [X] Override an encryption key of a specific Bucket and prefix.
 - [ ] Project
   - [X] Create a Bucket.
   - [ ] Try to create a Bucket which already exists.

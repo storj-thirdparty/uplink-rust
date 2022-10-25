@@ -7,6 +7,94 @@ use uplink::{error, Bucket, Error, Object, Project};
 mod common;
 
 #[test]
+fn integration_grant_new() {
+    let env = common::Environment::load();
+    let grant = Grant::new(&env.access_grant).expect("access grant parsing");
+
+    assert_eq!(
+        &env.access_grant,
+        &grant.serialize().expect("serialize valid access grant"),
+        "serialize"
+    );
+
+    assert_eq!(
+        common::SATELLITE_ADDR,
+        grant.satellite_address().expect("satellite address"),
+        "satellite address"
+    );
+}
+
+#[test]
+fn integration_grant_request_access_with_passphrase() {
+    let env = common::Environment::load();
+    let grant = Grant::request_access_with_passphrase(
+        common::SATELLITE_ADDR,
+        &env.api_key,
+        &env.encryption_secret,
+    )
+    .expect("request access grant not to fail");
+
+    assert_eq!(
+        &env.access_grant,
+        &grant.serialize().expect("serialize valid access grant"),
+        "requested access grant should be equal than the provided one when using the same API key and encryption secret",
+    );
+}
+
+#[test]
+fn integration_grant_override_encryption_key() {
+    use uplink::EncryptionKey;
+
+    let env = common::Environment::load();
+    let grant_root = Grant::new(&env.access_grant).expect("access grant parsing");
+
+    // Create bucket for user.
+    let project = &mut Project::open(&grant_root);
+    let bucket_name = common::generate_name("multitenant");
+    let (_bucket, _ok) = project.create_bucket(&bucket_name).expect("create bucket");
+
+    // Create an access grant for the user and restrict it to its bucket.
+    let grant_user = grant_root
+        .share(
+            &Permission::full(),
+            Some(vec![
+                SharePrefix::full_bucket(&bucket_name).expect("share prefix creation")
+            ]),
+        )
+        .expect("no error creating user's grant");
+
+    // User create its encryption key and override the key of the provided access grant.
+    let key_user =
+        EncryptionKey::derive("pass", "salt".as_bytes()).expect("deriving encryption key");
+    grant_user
+        .override_encryption_key(&bucket_name, "/", &key_user)
+        .expect("no error overriding grant encryption key");
+
+    {
+        // Upload an object with the user's grant.
+        let proj = &mut Project::open(&grant_user);
+        let object_key = "overridden-encryption-key-data.txt";
+        let upload = &mut proj
+            .upload_object(&bucket_name, object_key, None)
+            .expect("upload object");
+        let object_data = String::from("Uplink Rust test object: overridden encryption key");
+        upload
+            .write_all(object_data.as_bytes())
+            .expect("upload object write data");
+        upload.commit().expect("upload object commit");
+
+        // Download the object with the root grant should fail.
+        let proj = &mut Project::open(&grant_root);
+        proj.download_object(&bucket_name, object_key, None)
+            .expect_err("when tyring to download user's object with the root access grant");
+    }
+
+    project
+        .delete_bucket_with_objects(&bucket_name)
+        .expect("clean up delete bucket with objects");
+}
+
+#[test]
 fn integration_grant_share() {
     let env = common::Environment::load();
     let grant_root = Grant::new(&env.access_grant).expect("access grant parsing");

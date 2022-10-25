@@ -1,9 +1,14 @@
 use std::env;
 use std::time::{Duration, SystemTime};
 
+pub const SATELLITE_ADDR: &str =
+    "12whfK1EDvHJtajBiAUeajQLYcWqxcQmdYQU5zX5cCf6bAxfgu4@localhost:7777";
+
 pub struct Environment {
     pub user: String,
     pub project_id: String,
+    pub api_key: String,
+    pub encryption_secret: String,
     pub access_grant: String,
     pub s3_gateway_url: String,
     pub aws_access_key_id: String,
@@ -16,6 +21,9 @@ impl Environment {
             user: env::var("STORJ_USER").expect("STORJ_USER env var isn't defined"),
             project_id: env::var("STORJ_PROJECT_ID")
                 .expect("STORJ_PROJECT_ID env var isn't defined"),
+            api_key: env::var("STORJ_API_KEY").expect("STORJ_API_KEY env var isn't defined"),
+            encryption_secret: env::var("STORJ_ENCRYPTION_SECRET")
+                .expect("STORJ_ENCRYPTION_SECRET env var isn't defined"),
             access_grant: env::var("STORJ_ACCESS").expect("STORJ_ACCESS env var isn't defined"),
             s3_gateway_url: env::var("STORJ_GATEWAY").expect("STORJ_GATEWAY env var isn't defined"),
             aws_access_key_id: env::var("AWS_ACCESS_KEY_ID")
