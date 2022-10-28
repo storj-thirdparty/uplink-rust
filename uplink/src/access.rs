@@ -193,7 +193,7 @@ impl Grant {
             res = unsafe {
                 *ulksys::uplink_access_share(
                     self.inner.access,
-                    permission.to_ffi_permissions(),
+                    permission.as_ffi_permissions(),
                     ulk_prefixes.as_mut_ptr(),
                     ulk_prefixes.len() as i64,
                 )
@@ -205,7 +205,7 @@ impl Grant {
             res = unsafe {
                 *ulksys::uplink_access_share(
                     self.inner.access,
-                    permission.to_ffi_permissions(),
+                    permission.as_ffi_permissions(),
                     std::ptr::null_mut(),
                     0,
                 )
@@ -421,7 +421,7 @@ impl Permission {
     }
 
     /// Returns the FFI representation of this permissions.
-    fn to_ffi_permissions(&self) -> ulksys::UplinkPermission {
+    fn as_ffi_permissions(&self) -> ulksys::UplinkPermission {
         ulksys::UplinkPermission {
             allow_download: self.allow_download,
             allow_upload: self.allow_upload,
