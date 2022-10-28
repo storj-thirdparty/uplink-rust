@@ -101,7 +101,7 @@ impl Config {
     pub fn register_gateway_access(
         &self,
         access: access::Grant,
-        opts: Option<OptionsRegisterAccess>,
+        opts: Option<&OptionsRegisterAccess>,
     ) -> Result<credentials::Gateway> {
         let uc_opts = if let Some(o) = opts {
             &o.as_ffi_options_register_access() as *const ulksys::EdgeRegisterAccessOptions
