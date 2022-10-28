@@ -160,7 +160,7 @@ impl Project {
         current_key: &str,
         new_bucket: &str,
         new_key: &str,
-        opts: Option<options::CopyObject>,
+        opts: Option<&options::CopyObject>,
     ) -> Result<Object> {
         let c_cur_bucket = helpers::cstring_from_str_fn_arg("current_bucket", current_bucket)?;
         let c_cur_key = helpers::cstring_from_str_fn_arg("current_key", current_key)?;
@@ -277,7 +277,7 @@ impl Project {
         &self,
         bucket: &str,
         key: &str,
-        opts: Option<options::Download>,
+        opts: Option<&options::Download>,
     ) -> Result<object::Download> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
@@ -318,7 +318,7 @@ impl Project {
     }
 
     /// Returns an iterator over the list of existing buckets with optional options.
-    pub fn list_buckets(&self, opts: Option<options::ListBuckets>) -> bucket::Iterator {
+    pub fn list_buckets(&self, opts: Option<&options::ListBuckets>) -> bucket::Iterator {
         // SAFETY: we get the FFI representation of the opts if it isn't `None` then we get a
         // mutable reference to it but we use the reference only inside of the scope, hence we are
         // always referencing it during its lifetime that the scope establishes.
@@ -342,7 +342,7 @@ impl Project {
     pub fn list_objects(
         &self,
         bucket: &str,
-        opts: Option<options::ListObjects>,
+        opts: Option<&options::ListObjects>,
     ) -> Result<object::Iterator> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
 
@@ -375,7 +375,7 @@ impl Project {
         bucket: &str,
         key: &str,
         upload_id: &str,
-        opts: Option<options::ListUploadParts>,
+        opts: Option<&options::ListUploadParts>,
     ) -> Result<upload::PartIterator> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
@@ -409,7 +409,7 @@ impl Project {
     pub fn list_uploads(
         &self,
         bucket: &str,
-        opts: Option<options::ListUploads>,
+        opts: Option<&options::ListUploads>,
     ) -> Result<upload::Iterator> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
 
@@ -442,7 +442,7 @@ impl Project {
         current_key: &str,
         new_bucket: &str,
         new_key: &str,
-        opts: Option<options::MoveObject>,
+        opts: Option<&options::MoveObject>,
     ) -> Result<()> {
         let c_cur_bucket = helpers::cstring_from_str_fn_arg("current_bucket", current_bucket)?;
         let c_cur_key = helpers::cstring_from_str_fn_arg("current_key", current_key)?;
@@ -489,7 +489,7 @@ impl Project {
     ///
     /// A successful revocation request may not actually apply the revocation immediately because
     /// of the satellite's access caching policies.
-    pub fn revoke_access(&self, access: Grant) -> Result<()> {
+    pub fn revoke_access(&self, access: &Grant) -> Result<()> {
         // SAFETY: we trust the FFI is behaving correctly when called with correct value.
         let uc_err =
             unsafe { ulksys::uplink_revoke_access(self.inner.project, access.as_ffi_access()) };
@@ -536,7 +536,7 @@ impl Project {
         &self,
         bucket: &str,
         key: &str,
-        opts: Option<options::Upload>,
+        opts: Option<&options::Upload>,
     ) -> Result<object::Upload> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;
@@ -601,7 +601,7 @@ impl Project {
         bucket: &str,
         key: &str,
         metadata: &mut metadata::Custom,
-        opts: Option<options::UploadObjectMetadata>,
+        opts: Option<&options::UploadObjectMetadata>,
     ) -> Result<()> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
         let c_key = helpers::cstring_from_str_fn_arg("key", key)?;

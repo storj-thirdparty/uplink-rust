@@ -25,7 +25,7 @@ pub fn share_url(
     access_key_id: &str,
     bucket: &str,
     key: &str,
-    opts: Option<OptionsShareURL>,
+    opts: Option<&OptionsShareURL>,
 ) -> Result<String> {
     let base_url = helpers::cstring_from_str_fn_arg("base_url", base_url)?;
     let access_key = helpers::cstring_from_str_fn_arg("access_key_id", access_key_id)?;
