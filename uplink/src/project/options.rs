@@ -40,7 +40,7 @@ pub struct CopyObject {}
 
 impl CopyObject {
     /// Returns the FFI representation of the options.
-    pub(crate) fn to_ffi_copy_object_options(&self) -> ulksys::UplinkCopyObjectOptions {
+    pub(crate) fn as_ffi_copy_object_options(&self) -> ulksys::UplinkCopyObjectOptions {
         ulksys::UplinkCopyObjectOptions {}
     }
 }
@@ -59,7 +59,7 @@ pub struct Download {
 
 impl Download {
     /// Returns the FFI representation of the options.
-    pub(crate) fn to_ffi_download_options(&self) -> ulksys::UplinkDownloadOptions {
+    pub(crate) fn as_ffi_download_options(&self) -> ulksys::UplinkDownloadOptions {
         ulksys::UplinkDownloadOptions {
             offset: self.offset,
             length: self.length,
@@ -84,7 +84,7 @@ impl ListBuckets {
     }
 
     /// Returns the FFI representation of the options.
-    pub(crate) fn to_ffi_list_buckets_options(&self) -> ulksys::UplinkListBucketsOptions {
+    pub(crate) fn as_ffi_list_buckets_options(&self) -> ulksys::UplinkListBucketsOptions {
         ulksys::UplinkListBucketsOptions {
             cursor: self.inner_cursor.as_ptr(),
         }
@@ -187,7 +187,7 @@ impl<'a> ListObjects<'a> {
     }
 
     /// Returns the FFI representation of the options.
-    pub(crate) fn to_ffi_list_objects_options(&self) -> ulksys::UplinkListObjectsOptions {
+    pub(crate) fn as_ffi_list_objects_options(&self) -> ulksys::UplinkListObjectsOptions {
         ulksys::UplinkListObjectsOptions {
             prefix: self.inner_prefix.as_ptr(),
             cursor: self.inner_cursor.as_ptr(),
@@ -294,7 +294,7 @@ impl<'a> ListUploads<'a> {
     }
 
     /// Returns the FFI representation of the options.
-    pub(crate) fn to_ffi_list_uploads_options(&self) -> ulksys::UplinkListUploadsOptions {
+    pub(crate) fn as_ffi_list_uploads_options(&self) -> ulksys::UplinkListUploadsOptions {
         ulksys::UplinkListUploadsOptions {
             prefix: self.inner_prefix.as_ptr(),
             cursor: self.inner_cursor.as_ptr(),
@@ -318,7 +318,7 @@ pub struct ListUploadParts {
 
 impl ListUploadParts {
     /// Returns the FFI representation of the options.
-    pub(crate) fn to_ffi_list_upload_parts_options(&self) -> ulksys::UplinkListUploadPartsOptions {
+    pub(crate) fn as_ffi_list_upload_parts_options(&self) -> ulksys::UplinkListUploadPartsOptions {
         ulksys::UplinkListUploadPartsOptions {
             cursor: self.cursor,
         }
@@ -331,7 +331,7 @@ pub struct MoveObject {}
 
 impl MoveObject {
     /// Returns the FFI representation of the options.
-    pub(crate) fn to_ffi_move_object_options(&self) -> ulksys::UplinkMoveObjectOptions {
+    pub(crate) fn as_ffi_move_object_options(&self) -> ulksys::UplinkMoveObjectOptions {
         ulksys::UplinkMoveObjectOptions {}
     }
 }
@@ -348,7 +348,7 @@ pub struct Upload {
 
 impl Upload {
     /// Returns the FFI representation of the options.
-    pub(crate) fn to_ffi_upload_options(&self) -> ulksys::UplinkUploadOptions {
+    pub(crate) fn as_ffi_upload_options(&self) -> ulksys::UplinkUploadOptions {
         let expires = self.expires.unwrap_or(Duration::ZERO);
 
         ulksys::UplinkUploadOptions {
@@ -365,7 +365,7 @@ pub struct UploadObjectMetadata {}
 
 impl UploadObjectMetadata {
     /// Returns the FFI representation of the options.
-    pub(crate) fn to_ffi_upload_object_metadata_options(
+    pub(crate) fn as_ffi_upload_object_metadata_options(
         &self,
     ) -> ulksys::UplinkUploadObjectMetadataOptions {
         ulksys::UplinkUploadObjectMetadataOptions {}

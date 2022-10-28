@@ -96,7 +96,7 @@ impl Project {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_ffi_upload_options();
+                uc_opts = o.as_ffi_upload_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
@@ -175,7 +175,7 @@ impl Project {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_ffi_copy_object_options();
+                uc_opts = o.as_ffi_copy_object_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
@@ -290,7 +290,7 @@ impl Project {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_ffi_download_options();
+                uc_opts = o.as_ffi_download_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
@@ -327,7 +327,7 @@ impl Project {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_ffi_list_buckets_options();
+                uc_opts = o.as_ffi_list_buckets_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             };
 
@@ -354,7 +354,7 @@ impl Project {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_ffi_list_objects_options();
+                uc_opts = o.as_ffi_list_objects_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             };
 
@@ -389,7 +389,7 @@ impl Project {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_ffi_list_upload_parts_options();
+                uc_opts = o.as_ffi_list_upload_parts_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             };
 
@@ -421,7 +421,7 @@ impl Project {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_ffi_list_uploads_options();
+                uc_opts = o.as_ffi_list_uploads_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
@@ -457,7 +457,7 @@ impl Project {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_ffi_move_object_options();
+                uc_opts = o.as_ffi_move_object_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
@@ -549,7 +549,7 @@ impl Project {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_ffi_upload_options();
+                uc_opts = o.as_ffi_upload_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
@@ -614,7 +614,7 @@ impl Project {
             let mut c_opts = ptr::null_mut();
             let mut uc_opts;
             if let Some(o) = opts {
-                uc_opts = o.to_ffi_upload_object_metadata_options();
+                uc_opts = o.as_ffi_upload_object_metadata_options();
                 c_opts = ptr::addr_of_mut!(uc_opts);
             }
 
