@@ -96,10 +96,11 @@ Integration tests:
   - [X] Upload an Object with Custom Metadata.
   - [X] Multipart upload.
   - [X] Download an Object.
-  - [ ] Stat an Object.
+  - [X] Stat an Object.
   - [X] List Objects with System and Custom Metadata.
-  - [ ] List Objects without System and Custom Metadata.
-  - [ ] Move an object.
+  - [X] List Objects without System and Custom Metadata.
+  - [X] Copy an object.
+  - [X] Move an object.
   - [X] Delete an Object.
   - [X] Delete an empty Bucket.
   - [ ] Delete a Bucket with objects.
