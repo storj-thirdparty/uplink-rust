@@ -93,8 +93,8 @@ Integration tests:
   - [ ] Stat a Bucket.
   - [X] List Buckets.
   - [X] Upload an Object.
-  - [ ] Upload an Object with Custom Metadata.
-  - [ ] Multipart upload.
+  - [X] Upload an Object with Custom Metadata.
+  - [X] Multipart upload.
   - [X] Download an Object.
   - [ ] Stat an Object.
   - [X] List Objects with System and Custom Metadata.
