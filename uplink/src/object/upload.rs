@@ -181,8 +181,8 @@ impl Iterator {
     }
 }
 
-impl<'a> std::iter::Iterator for &'a Iterator {
-    type Item = Result<Info<'a>>;
+impl std::iter::Iterator for Iterator {
+    type Item = Result<Info>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // SAFETY: we trust the FFI functions don't panic when called with an instance returned by
@@ -209,11 +209,11 @@ impl Drop for Iterator {
 }
 
 /// Contains information about a multipart upload operation.
-pub struct Info<'a> {
+pub struct Info {
     /// The ID associated to the upload.
-    pub upload_id: &'a str,
+    pub upload_id: String,
     /// The object's key associated to the upload.
-    pub key: &'a str,
+    pub key: String,
     /// If `key` is a prefix or not.
     pub is_prefix: bool,
     /// The system metadata associated to the upload.
@@ -222,7 +222,7 @@ pub struct Info<'a> {
     pub metadata_custom: metadata::Custom,
 }
 
-impl Info<'_> {
+impl Info {
     /// Creates a new instance from the FFI representation.
     fn from_ffi_upload_info(uc_upload: *mut ulksys::UplinkUploadInfo) -> Self {
         assert!(
@@ -234,15 +234,19 @@ impl Info<'_> {
         upload.ensure();
 
         let is_prefix = upload.is_prefix;
-        let upload_id: &str;
-        let key: &str;
+        let upload_id;
+        let key;
         unsafe {
-            upload_id = CStr::from_ptr(upload.upload_id).to_str().expect(
-                "FFI returned an invalid upload's ID; it contains invalid UTF-8 characters",
-            );
-            key = CStr::from_ptr(upload.key).to_str().expect(
-                "FFI returned an invalid upload's key; it contains invalid UTF-8 characters",
-            );
+            upload_id = CStr::from_ptr(upload.upload_id)
+                .to_str()
+                .expect("FFI returned an invalid upload's ID; it contains invalid UTF-8 characters")
+                .to_string();
+            key = CStr::from_ptr(upload.key)
+                .to_str()
+                .expect(
+                    "FFI returned an invalid upload's key; it contains invalid UTF-8 characters",
+                )
+                .to_string();
 
             ulksys::uplink_free_upload_info(uc_upload);
         }
