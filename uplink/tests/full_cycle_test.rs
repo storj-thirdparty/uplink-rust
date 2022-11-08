@@ -1,8 +1,9 @@
-use std::io::{Read, Write};
-use std::time::Duration;
-
 use uplink::access::Grant;
 use uplink::Project;
+
+use std::io::{Read, Write};
+
+use std::time::Duration;
 
 mod common;
 
