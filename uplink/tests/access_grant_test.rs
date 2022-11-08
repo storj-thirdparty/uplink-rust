@@ -1,8 +1,8 @@
-use std::io::{Read, Write};
-
 use uplink::access::{Grant, Permission, SharePrefix};
 use uplink::Result as UlResult;
 use uplink::{error, Bucket, Error, Object, Project};
+
+use std::io::{Read, Write};
 
 mod common;
 
