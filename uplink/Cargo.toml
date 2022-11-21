@@ -1,6 +1,6 @@
 [package]
 name = "uplink"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Ivan Fraixedes <ivan@fraixed.es>"]
 edition = "2021"
 description = "Idiomatic and safe Rust binding for the Storj Lib Uplink"
