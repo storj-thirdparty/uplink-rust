@@ -112,7 +112,7 @@ General:
 
 - [X] Add a CI solution (Travis, Github actions, etc.) for running tests,
       linters on every PR and when something is merge into the `main` branch.
-- [ ] Add general documentation about the Storj network and its entities
+- [X] Add general documentation about the Storj network and its entities
       mimicking the original [Go Uplink package](https://pkg.go.dev/storj.io/uplink#section-documentation).
 - [X] Add some documentation about the crate design and implementation if the
       documentation of each module, types, functions, etc., aren't enough.
