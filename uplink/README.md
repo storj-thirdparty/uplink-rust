@@ -86,7 +86,7 @@ Integration tests:
   - [X] Parse one.
   - [X] Share one.
   - [X] Override an encryption key of a specific Bucket and prefix.
-- [ ] Project
+- [X] Project
   - [X] Create a Bucket.
   - [X] Try to create a Bucket which already exists.
   - [X] Ensure a Bucket, an existing and non-existing one.
@@ -104,9 +104,9 @@ Integration tests:
   - [X] Delete an Object.
   - [X] Delete an empty Bucket.
   - [X] Delete a Bucket with objects.
-- [ ] Edge.
-  - [ ] Join a share URL.
-  - [ ] Register an Access Grant.
+- [X] Edge.
+  - [X] Join a share URL.
+  - [ ] Register an Access Grant. - NOTE: [waiting to know if we can test it with storj/up](https://github.com/storj/up/issues/59)
 
 General:
 
