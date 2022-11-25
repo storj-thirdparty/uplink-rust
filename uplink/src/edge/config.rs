@@ -55,11 +55,6 @@ impl Config {
                 certificate_pem: ptr::null_mut(),
             },
         })
-
-        // Ok(Self {
-        //     auth_service_addr,
-        //     certificate_pem: None,
-        // })
     }
 
     /// Creates a new configuration that uses the specified Auth service address and the root
@@ -100,7 +95,7 @@ impl Config {
     /// access grant if the use case doesn't have a specific constraint for not doing it.
     pub fn register_gateway_access(
         &self,
-        access: access::Grant,
+        access: &access::Grant,
         opts: Option<&OptionsRegisterAccess>,
     ) -> Result<credentials::Gateway> {
         let uc_opts = if let Some(o) = opts {
