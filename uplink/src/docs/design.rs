@@ -1,4 +1,4 @@
-//! # Architecture and implementation details
+//! # Implementation design
 //!
 //! ## Errors
 //!

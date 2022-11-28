@@ -1,4 +1,4 @@
 //! Supplementary documentation (no code!).
 
-pub mod architecture;
+pub mod design;
 pub mod storj;
