@@ -226,7 +226,7 @@ impl Uplink {
     ///
     /// NOTE The returned instance has a copy of everything that requires from the passed pointer,
     /// so the ownership of all its resources remains in the caller, hence it must care about
-    /// releasing them. See [architecture documentation](crate::docs::architecture).
+    /// releasing them. See [implementation design documentation](crate::docs::design).
     pub(crate) fn new(err: *mut ulksys::UplinkError) -> Option<Self> {
         if err.is_null() {
             return None;
