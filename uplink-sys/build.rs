@@ -31,7 +31,7 @@ fn main() {
     let uplink_c_dir = out_dir.join("uplink-c");
     // Copy project to OUT_DIR for building
     Command::new("cp")
-        .args(&[
+        .args([
             "-R",
             &uplink_c_src.to_string_lossy(),
             &uplink_c_dir.to_string_lossy(),
@@ -42,7 +42,7 @@ fn main() {
     if env::var("DOCS_RS").is_ok() {
         // Use the precompiled uplink-c libraries for building the docs by docs.rs.
         Command::new("cp")
-            .args(&[
+            .args([
                 "-R",
                 &PathBuf::from(".docs-rs").to_string_lossy(),
                 &uplink_c_dir.join(".build").to_string_lossy(),
@@ -53,7 +53,7 @@ fn main() {
         // Delete the generated build files for avoiding `cargo publish` to complain about modifying
         // things outside of the OUT_DIR.
         Command::new("rm")
-            .args(&["-r", &uplink_c_src.join(".build").to_string_lossy()])
+            .args(["-r", &uplink_c_src.join(".build").to_string_lossy()])
             .status()
             .expect("Failed to delete  uplink-c/.build directory.");
     }
