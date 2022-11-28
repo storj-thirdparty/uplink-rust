@@ -74,7 +74,8 @@ impl Object {
 
     /// Creates a new instance from the FFI representation for an object's result.
     ///
-    /// See [`from_ffi_object`] why an `Option` is returned when result is OK.
+    /// See [`from_ffi_object`](Self::from_ffi_object) why an `Option` is returned when result is
+    /// OK.
     ///
     /// It returns the following errors:
     /// * an [`Error::new_uplink` constructor](crate::Error::new_uplink), if `uc_result` contains a

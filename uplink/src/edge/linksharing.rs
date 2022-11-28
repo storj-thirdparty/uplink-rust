@@ -11,9 +11,9 @@ use uplink_sys as ulksys;
 /// It doesn't check the existence or the accessibility of the target.
 ///
 /// An example result is
-/// https://link.us1.storjshare.io/s/l5pucy3dmvzxgs3fpfewix27l5pq/mybucket/myprefix/myobject
+/// `https://link.us1.storjshare.io/s/l5pucy3dmvzxgs3fpfewix27l5pq/mybucket/myprefix/myobject`
 ///
-/// * The `base_url` is the URL of the linksharing service, e.g. https://link.us1.storjshare.io.
+/// * The `base_url` is the URL of the linksharing service, e.g. `https://link.us1.storjshare.io`.
 /// * The `access_key_id` is can be obtained calling [`crate::edge::Config::register_gateway_access`]
 ///   but, it must be associated with public visibility.
 /// * The `bucket` is the name of the bucket to share; set it to empty for sharing the entire
