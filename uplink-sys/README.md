@@ -1,6 +1,6 @@
 # uplink-sys
 
-[![CI Status](https://img.shields.io/github/workflow/status/storj-thirdparty/uplink-rust/uplink-sys?style=for-the-badge)](https://github.com/storj-thirdparty/uplink-rust/actions/workflows/uplink-sys.yml)
+[![CI Status](https://img.shields.io/github/actions/workflow/status/storj-thirdparty/uplink-rust/uplink-sys.yml?branch=main&style=for-the-badge)](https://github.com/storj-thirdparty/uplink-rust/actions/workflows/uplink-sys.yml)
 [![Crates.io](https://img.shields.io/crates/v/uplink-sys?style=for-the-badge)](https://crates.io/crates/uplink-sys)
 [![docs.rs](https://img.shields.io/docsrs/uplink-sys?style=for-the-badge)](https://docs.rs/uplink-sys)
 ![Crates.io](https://img.shields.io/crates/d/uplink-sys?style=for-the-badge)
