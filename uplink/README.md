@@ -1,6 +1,6 @@
 # Storj Uplink Library for Rust
 
-[![CI Status](https://img.shields.io/github/workflow/status/storj-thirdparty/uplink-rust/uplink?style=for-the-badge)](https://github.com/storj-thirdparty/uplink-rust/actions/workflows/uplink.yml)
+[![CI Status](https://img.shields.io/github/actions/workflow/status/storj-thirdparty/uplink-rust/uplink.yml?branch=main&style=for-the-badge)](https://github.com/storj-thirdparty/uplink-rust/actions/workflows/uplink.yml)
 [![crates.io](https://img.shields.io/crates/v/uplink.svg?style=for-the-badge)](https://crates.io/crates/uplink)
 [![docs.rs](https://img.shields.io/docsrs/uplink?style=for-the-badge)](https://docs.rs/uplink)
 ![Crates.io](https://img.shields.io/crates/d/uplink?style=for-the-badge)
