@@ -64,7 +64,7 @@ tests/.tmp/up/storj-up: tests/.tmp/up
 tests/.tmp/up:
 	mkdir -p tests/.tmp
 	cd tests/.tmp; git clone https://github.com/storj/up.git
-	cd tests/.tmp/up; git checkout v1.0.0
+	cd tests/.tmp/up; git checkout v1.1.0
 
 ## Publish crate ##
 .PHONY: publish-test
