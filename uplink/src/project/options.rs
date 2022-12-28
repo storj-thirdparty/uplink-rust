@@ -68,7 +68,7 @@ impl Download {
 }
 
 /// Options for listing buckets.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct ListBuckets {
     /// C representation of `cursor` for providing it to the FFI and guards its lifetime until
     /// `self` gets dropped.
@@ -92,7 +92,7 @@ impl ListBuckets {
 }
 
 /// Options for listing objects.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct ListObjects<'a> {
     /// Only list objects with this key prefix. When not empty, it must ends with slash.
     prefix: &'a str,
@@ -199,7 +199,7 @@ impl<'a> ListObjects<'a> {
 }
 
 /// Options for listing uncommitted uploads.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct ListUploads<'a> {
     /// Only list uncommitted uploads with this key prefix. When not empty, it must ends with slash.
     prefix: &'a str,
@@ -374,38 +374,282 @@ impl UploadObjectMetadata {
 
 #[cfg(test)]
 mod test {
+    use super::*;
+    use crate::error;
+
     #[test]
     fn test_list_buckets_with_cursor() {
-        // TODO: implement test for checking OK and error cases.
+        {
+            // OK.
+            let cursor = "some-cursor-id";
+            let lo = ListBuckets::with_cursor(cursor)
+                .expect("no error with a string without the NULL character");
+            assert_eq!(cursor, lo.inner_cursor.to_str().unwrap(), "cursor value");
+        }
+        {
+            // Error: invalid cursor value.
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                ListBuckets::with_cursor("cursor\0id")
+                    .expect_err("when passing a cursor value with NULL bytes")
+            {
+                assert_eq!(names, "cursor", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot contains null bytes (0 byte). Null byte found at 6",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
     }
 
     #[test]
     fn test_list_objects_with_prefix() {
-        // TODO: implement test for checking OK and error cases.
+        {
+            // OK.
+            let prefix = "a/b/";
+            let lo = ListObjects::with_prefix(prefix)
+                .expect("no error with a string without the NULL character and ending with '/'");
+            assert_eq!(prefix, lo.inner_prefix.to_str().unwrap(), "prefix value");
+        }
+        {
+            // Error: prefix doesn't end with `/`.
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                ListObjects::with_prefix("a/b")
+                    .expect_err("when passing a prefix value without ending with '/'")
+            {
+                assert_eq!(names, "prefix", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot be empty and must end with '/'",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
+        {
+            // Error: invalid prefix value.
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                ListObjects::with_prefix("a/b/\0/c/")
+                    .expect_err("when passing a prefix value with NULL bytes")
+            {
+                assert_eq!(names, "prefix", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot contains null bytes (0 byte). Null byte found at 4",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
     }
 
     #[test]
     fn test_list_objects_with_cursor() {
-        // TODO: implement test for checking OK and error cases.
+        {
+            // OK.
+            let cursor = "some-cursor-id";
+            let lb = ListObjects::with_cursor(cursor)
+                .expect("no error with a string without the NULL character");
+            assert_eq!(cursor, lb.inner_cursor.to_str().unwrap(), "cursor value");
+        }
+        {
+            // Error: invalid cursor value.
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                ListObjects::with_cursor("cursor\0id")
+                    .expect_err("when passing a cursor value with NULL bytes")
+            {
+                assert_eq!(names, "cursor", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot contains null bytes (0 byte). Null byte found at 6",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
     }
 
     #[test]
     fn test_list_objects_with_prefix_and_cursor() {
-        // TODO: implement test for checking OK and error cases.
+        {
+            // OK.
+            let prefix = "a/b/";
+            let cursor = "cursor-id";
+            let lo = ListObjects::with_prefix_and_cursor(prefix, cursor)
+                .expect("no error with a valid prefix and cursor");
+            assert_eq!(prefix, lo.inner_prefix.to_str().unwrap(), "prefix value");
+            assert_eq!(cursor, lo.inner_cursor.to_str().unwrap(), "cursor value");
+        }
+        {
+            // Error: prefix doesn't end with `/`.
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                ListObjects::with_prefix_and_cursor("a/b", "cursor-id")
+                    .expect_err("when passing a prefix value without ending with '/'")
+            {
+                assert_eq!(names, "prefix", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot be empty and must end with '/'",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
+        {
+            // Error: invalid prefix value.
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                ListObjects::with_prefix_and_cursor("a/b/\0/c/", "cursor-id")
+                    .expect_err("when passing a cursor value with NULL bytes")
+            {
+                assert_eq!(names, "prefix", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot contains null bytes (0 byte). Null byte found at 4",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
+        {
+            // Error: invalid cursor value.
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                ListObjects::with_prefix_and_cursor("a/b/", "cursor\0id")
+                    .expect_err("when passing a cursor value with NULL bytes")
+            {
+                assert_eq!(names, "cursor", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot contains null bytes (0 byte). Null byte found at 6",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
     }
 
     #[test]
     fn test_list_uploads_with_prefix() {
-        // TODO: implement test for checking OK and error cases.
+        {
+            // OK.
+            let prefix = "a/b/";
+            let lu = ListUploads::with_prefix(prefix)
+                .expect("no error with a string without the NULL character and ending with '/'");
+            assert_eq!(prefix, lu.inner_prefix.to_str().unwrap(), "prefix value");
+        }
+        {
+            // Error: prefix doesn't end with `/`.
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                ListUploads::with_prefix("a/b")
+                    .expect_err("when passing a prefix value without ending with '/'")
+            {
+                assert_eq!(names, "prefix", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot be empty and must end with '/'",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
+        {
+            // Error: invalid prefix value.
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                ListUploads::with_prefix("a/b/\0/c/")
+                    .expect_err("when passing a prefix value with NULL bytes")
+            {
+                assert_eq!(names, "prefix", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot contains null bytes (0 byte). Null byte found at 4",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
     }
 
     #[test]
     fn test_list_uploads_with_cursor() {
-        // TODO: implement test for checking OK and error cases.
+        {
+            // OK.
+            let cursor = "some-cursor-id";
+            let lu = ListUploads::with_cursor(cursor)
+                .expect("no error with a string without the NULL character");
+            assert_eq!(cursor, lu.inner_cursor.to_str().unwrap(), "cursor value");
+        }
+        {
+            // Error: invalid cursor value.
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                ListUploads::with_cursor("cursor\0id")
+                    .expect_err("when passing a cursor value with NULL bytes")
+            {
+                assert_eq!(names, "cursor", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot contains null bytes (0 byte). Null byte found at 6",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
     }
 
     #[test]
     fn test_list_uploads_with_prefix_and_cursor() {
-        // TODO: implement test for checking OK and error cases.
+        {
+            // OK.
+            let prefix = "a/b/";
+            let cursor = "cursor-id";
+            let lu = ListUploads::with_prefix_and_cursor(prefix, cursor)
+                .expect("no error with a valid prefix and cursor");
+            assert_eq!(prefix, lu.inner_prefix.to_str().unwrap(), "prefix value");
+            assert_eq!(cursor, lu.inner_cursor.to_str().unwrap(), "cursor value");
+        }
+        {
+            // Error: prefix doesn't end with `/`.
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                ListUploads::with_prefix_and_cursor("a/b", "cursor-id")
+                    .expect_err("when passing a prefix value without ending with '/'")
+            {
+                assert_eq!(names, "prefix", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot be empty and must end with '/'",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
+        {
+            // Error: invalid prefix value.
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                ListUploads::with_prefix_and_cursor("a/b/\0/c/", "cursor-id")
+                    .expect_err("when passing a cursor value with NULL bytes")
+            {
+                assert_eq!(names, "prefix", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot contains null bytes (0 byte). Null byte found at 4",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
+        {
+            // Error: invalid cursor value.
+            if let Error::InvalidArguments(error::Args { names, msg }) =
+                ListUploads::with_prefix_and_cursor("a/b/", "cursor\0id")
+                    .expect_err("when passing a cursor value with NULL bytes")
+            {
+                assert_eq!(names, "cursor", "invalid error argument name");
+                assert_eq!(
+                    msg, "cannot contains null bytes (0 byte). Null byte found at 6",
+                    "invalid error argument message"
+                );
+            } else {
+                panic!("expected an invalid argument error");
+            }
+        }
     }
 }
