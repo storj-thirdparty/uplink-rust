@@ -6,6 +6,7 @@ LOCAL_ABS_CRATE_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 # Makefile special variables #
 
 .DEFAULT_GOAL := build
+SHELL := /bin/bash
 
 # Targets #
 
@@ -20,7 +21,8 @@ lint:
 
 .PHONY: test
 test: $(UPLINK_C)/.git
-	cargo test
+	$(MAKE) -C .. integration-tests-env-up
+	source ../.tmp/env; cargo test
 
 .PHONY: publish-test
 publish-test: clean $(UPLINK_C)/.git

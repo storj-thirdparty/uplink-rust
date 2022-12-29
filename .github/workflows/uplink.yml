@@ -32,6 +32,8 @@ jobs:
       - name: Clean up
         if: always()
         run: make clean
+      - name: Publish crate simulation
+        run: make publish-test
   test-implementation:
     runs-on: ubuntu-latest
     defaults:

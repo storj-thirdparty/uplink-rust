@@ -27,10 +27,6 @@ jobs:
       run: git submodule update --init
     - name: Lint
       run: make lint
-    # Clippy
-    #- name: clippy
-      # workaround for clippy bug where it emits warnings instead of errors if it's not a clean build (or in this case we just fudge the timestamps of .rs files)
-      #run: find . | grep "\.rs$" | xargs touch ; cargo clippy --workspace -- -D clippy::all
     - name: Build
       run: make build
     - name: Check lib binaries for docs.rs
@@ -38,12 +34,7 @@ jobs:
         make update-libs-docs-rs
         test -z $(git ls-files -d -m -o .docs-rs/libuplink.pc) || (printf "the uplink-c library binaries for docs.rs aren't up to date. Update them with `make update-libs-docs-rs`\n" && exit 1)
         git clean -fd && git checkout .
-    - name: Create secrets for tests
-      run: printf "${{ secrets.STORJ_TEST_SAT_ADDRESS }}\n${{ secrets.STORJ_TEST_API_KEY }}\n${{ secrets.STORJ_TEST_PASSPHRASE }}" > test_secrets.txt
     - name: Test
       run: make test
-    - name: Delete secrets for tests
-      if: always()
-      run: rm -f test_secrets.txt
-    - name: Crate Publish Test
+    - name: Publish crate simulation
       run: make publish-test
