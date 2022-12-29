@@ -146,7 +146,8 @@ impl Args {
     ///
     /// It panics because it makes easier to find a BUG on the `name`'s passed value.
     ///
-    /// TODO: implement the `name`'s constraints validation and panic if the validation fails.
+    /// TODO(https://github.com/storj-thirdparty/uplink-rust/issues/52): Implement the `name`'s
+    /// constraints validation and panic if the validation fails.
     fn new(names: &str, msg: &str) -> Self {
         Args {
             names: String::from(names),

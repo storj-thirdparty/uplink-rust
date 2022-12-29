@@ -124,8 +124,8 @@ fn integration_upload_multipart_commit() {
         .next()
         .expect("an item in the uploads list")
         .expect("a pending upload");
-    // TODO: uncomment the following assertion when the bug is fixed:
-    // https://github.com/storj/storj/issues/5298
+    // TODO(https://github.com/storj-thirdparty/uplink-rust/issues/50) uncomment the following
+    // assertion.
     // assert_eq!(upload_info.upload_id, item.upload_id, "pending upload key");
     assert_eq!(object_multipart_key, item.key, "pending upload key");
     assert!(!item.is_prefix, "pending upload is prefix");
