@@ -36,12 +36,11 @@ test-unit:
 
 tests/.tmp/env: tests/.tmp/up/storj-up
 	$(MAKE) integration-tests-credentials | grep -Ei "^export .+" > tests/.tmp/env
-	# TODO: This is a hack to get the AWS_* and STORJ_GATEWAY variables without
-	# overriding the access grants because those variable are only available using
-	# the storj-up from inside of the container, however, we cannot use the access
-	# grants because they use the docker compose service name in the URL rather
-	# than localhost and then it doesn't resolve.
-	# See: https://github.com/storj/up/issues/45#issuecomment-1288808260
+	# TODO(github.com/storj-thirdparty/uplink-rust/issues/48): This is a hack to get the AWS_* and
+	# STORJ_GATEWAY variables without overriding the access grants because those variable are only
+	# available using the storj-up from inside of the container, however, we cannot use the access
+	# grants because they use the docker compose service name in the URL rather than localhost and
+	# then it doesn't resolve.
 	@cd tests; docker compose exec -T satellite-api storj-up credentials --s3 -e \
 		-a http://authservice:8888 -s satellite-api \
 		| grep -E 'AWS|STORJ_GATEWAY' >> .tmp/env

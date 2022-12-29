@@ -641,8 +641,7 @@ impl Drop for Project {
         // correctly created `UplinkProjectResult` value.
         unsafe {
             // At this point we cannot do anything about the error, so discarded.
-            // TODO: find out if retrying the operation it's the right thing to do for some of the
-            // kind of errors that this function may return.
+            // TODO(https://github.com/storj-thirdparty/uplink-rust/issues/51).
             let _ = ulksys::uplink_close_project(self.inner.project);
             ulksys::uplink_free_project_result(self.inner);
         }

@@ -5,10 +5,12 @@ mod common;
 
 const AUTH_SERVICE_URL: &str = "localhost:8888";
 
-// #[test]
+// TODO(https://github.com/storj-thirdparty/uplink-rust/issues/49): we need new Uplink API for
+// being able to run this test successfully. Remove the `ignore` annotation and adjust the test
+// with the new API.
+#[test]
+#[ignore]
 fn integration_config_register_access() {
-    // TODO: See evolution of https://github.com/storj/up/issues/59 for enabling or removing this
-    // test.
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
 
