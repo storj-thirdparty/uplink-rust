@@ -44,8 +44,5 @@ use a Docker version without the `compose` command,  using the `docker-compose`,
 however, you will have to run by hand or make an straightforward change in the
 Makefile.
 
-  - [ ] Register an Access Grant. - NOTE: [waiting to know if we can test it with storj/up](https://github.com/storj/up/issues/59)
-
-
 
 [storj-uplink]: https://github.com/storj/uplink
