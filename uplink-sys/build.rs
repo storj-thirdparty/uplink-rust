@@ -20,9 +20,12 @@ fn main() {
         // Copying and building from a copy it doesn't work because it's a git submodule, hence it uses
         // a relative path to the superproject unless that the destination path is under the same
         // parent tree directory and with the same depth.
+        // We have also to disable building with QUIC because the current version doesn't build
+        // with QUIC if Go 1.20 or newer is used.
         Command::new("make")
             .arg("build")
             .current_dir(&uplink_c_src)
+            .env("GOFLAGS", " -tags=noquic")
             .status()
             .expect("Failed to run make command from build.rs.");
     }
