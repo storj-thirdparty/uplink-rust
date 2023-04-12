@@ -49,7 +49,7 @@ integration-tests-env-down:
 		| grep -E 'AWS|STORJ_GATEWAY' >> .tmp/env
 
 .tmp/up/storj-up: .tmp/up
-	cd .tmp/up; go build -o storj-up
+	cd .tmp/up; go build -tags noquic -o storj-up
 
 .tmp/up:
 	mkdir -p .tmp
