@@ -5,9 +5,17 @@ on:
     branches: main
     paths:
       - 'uplink/**'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - 'docker-compose.yaml'
+      - 'Makefile'
   pull_request:
     paths:
       - 'uplink/**'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - 'docker-compose.yaml'
+      - 'Makefile'
 
 env:
   # Show colors for cargo output
