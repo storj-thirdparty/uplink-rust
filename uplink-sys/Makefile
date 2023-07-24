@@ -6,7 +6,7 @@ LOCAL_ABS_CRATE_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 # Makefile special variables #
 
 .DEFAULT_GOAL := build
-SHELL := /bin/bash
+SHELL := /usr/bin/env bash
 
 # Targets #
 

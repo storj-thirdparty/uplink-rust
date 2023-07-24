@@ -1,7 +1,7 @@
 # Makefile special variables #
 
 .DEFAULT_GOAL := lint
-SHELL := /bin/bash
+SHELL := /usr/bin/env bash
 
 # Targets #
 
