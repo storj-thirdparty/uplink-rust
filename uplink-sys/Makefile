@@ -41,11 +41,20 @@ update-libs-docs-rs:
 	# Use the root of the repository, otherwise uplink-c doesn't have access to
 	# its GIT info and Go 1.18 or newer uses it for adding the version information
 	# to the binaries.
-	docker run --rm -v $(LOCAL_ABS_CRATE_PATH)/../:/uplink-rust -w /uplink-rust/uplink-sys/$(UPLINK_C) golang:1.18-stretch make build
+	# We cannot build directly with the default user of the container (root)
+	# because Git v2.35.2 set  by default that users that aren't owner of the
+	# repository can execute Git commands; despite it can be disabled with a
+	# global configuration, it seems that Go doesn't obey it and fails getting the
+	# version information from the vcs.
+	# Because we are not using the root user in the container, our user doesn't
+	# have permissions for creating the Go cache directory, so we have to map it
+	# to a directory the host machine.
+	mkdir -p ../.tmp/go-cache
+	docker run --rm -u $$(id -u):$$(id -g) -v $(LOCAL_ABS_CRATE_PATH)/../.tmp/go-cache:/.cache -v $(LOCAL_ABS_CRATE_PATH)/../:/uplink-rust -w /uplink-rust/uplink-sys/uplink-c golang:1.21 make build
 	cp -r $(UPLINK_C)/.build/* .docs-rs/
-	docker run --rm -v $(LOCAL_ABS_CRATE_PATH)/$(UPLINK_C):/$(UPLINK_C) -w /$(UPLINK_C) golang:1.18-stretch rm -rf .build
+	rm -rf ../.tmp/go-cache uplink-c/.build
 
 .PHONY: clean
 clean:
-	@rm -rf uplink-c/.build
+	@rm -rf uplink-c/.build .tmp
 	cargo clean
