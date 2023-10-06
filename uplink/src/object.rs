@@ -239,9 +239,8 @@ impl std::io::Read for Download {
             let bp = buf.as_mut_ptr();
             // SAFETY: we trust the FFI of dealing with a correct `UplinkDownload` instance and an
             // allocated buffer.
-            let read_res = unsafe {
-                ulksys::uplink_download_read(self.inner.download, bp.cast(), buf.len() as u64)
-            };
+            let read_res =
+                unsafe { ulksys::uplink_download_read(self.inner.download, bp.cast(), buf.len()) };
 
             if let Some(err) = Error::new_uplink(read_res.error) {
                 // According to the Uplink C bindings version that we are targeting v1.7.0 all the

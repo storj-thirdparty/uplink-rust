@@ -198,6 +198,9 @@ pub enum Uplink {
     /// Storj DCS network rejected the operation because it doesn't exists an object in the
     /// specified bucket and key.
     ObjectNotFound(String),
+    /// Storj DCS network rejected the operation because there isn't valid permissions for
+    /// conducting the requested operation.
+    PermissionDenied(String),
     /// Storj DCS network rejected the operation because it would exceed the account's segments
     /// limit.
     SegmentsLimitExceeded(String),
@@ -260,6 +263,7 @@ impl Uplink {
             ulksys::UPLINK_ERROR_BUCKET_NOT_FOUND => Self::BucketNotFound(msg),
             ulksys::UPLINK_ERROR_OBJECT_KEY_INVALID => Self::ObjectKeyInvalid(msg),
             ulksys::UPLINK_ERROR_OBJECT_NOT_FOUND => Self::ObjectNotFound(msg),
+            ulksys::UPLINK_ERROR_PERMISSION_DENIED => Self::PermissionDenied(msg),
             ulksys::UPLINK_ERROR_SEGMENTS_LIMIT_EXCEEDED => Self::SegmentsLimitExceeded(msg),
             ulksys::UPLINK_ERROR_STORAGE_LIMIT_EXCEEDED => Self::StorageLimitExceeded(msg),
             ulksys::UPLINK_ERROR_UPLOAD_DONE => Self::UploadDone(msg),
@@ -298,6 +302,7 @@ impl fmt::Display for Uplink {
             Self::BucketNotFound(msg) => ("bucket not found", msg),
             Self::ObjectKeyInvalid(msg) => ("object key invalid", msg),
             Self::ObjectNotFound(msg) => ("object not found", msg),
+            Self::PermissionDenied(msg) => ("permission denied", msg),
             Self::SegmentsLimitExceeded(msg) => ("segments limit exceeded", msg),
             Self::StorageLimitExceeded(msg) => ("storage limit exceeded", msg),
             Self::UploadDone(msg) => ("upload done", msg),
