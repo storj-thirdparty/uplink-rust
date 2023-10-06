@@ -190,7 +190,7 @@ fn integration_grant_share() {
             "write-only access grant returns an error when listing objects",
         );
         match res.unwrap_err() {
-            Error::Uplink(error::Uplink::Internal(_)) => {},
+            Error::Uplink(error::Uplink::PermissionDenied(_)) => {},
             err => panic!("{} is an unexpected error when listing objects with a write-only restricted access grant", err),
         };
 
@@ -269,30 +269,12 @@ fn integration_grant_share() {
             .expect("commit an object upload to another prefix");
 
         // Uploading to another prefix fails.
-        let upload = &mut proj_upload
-            .upload_object(&bucket1_name, "/pair-2/data.txt", None)
-            .expect("upload object");
+        let res = proj_upload.upload_object(&bucket1_name, "/pair-2/data.txt", None);
 
-        let object_data =
-            String::from("Uplink Rust test object: upload & download access grants pair");
-        match upload
-            .write_all(object_data.as_bytes())
-            .expect_err("upload object write data")
-            .kind()
-        {
-            std::io::ErrorKind::Other => {}
-            kind => panic!(
-                "{} is an unexpected std::io::ErrorKind when uploading an object to another prefix",
-                kind
-            ),
-        }
-        match upload
-            .commit()
-            .expect_err("commit an object upload to another prefix")
-        {
-            Error::Uplink(error::Uplink::Internal(_)) => {}
+        match res.unwrap_err() {
+            Error::Uplink(error::Uplink::PermissionDenied(_)) => {}
             err => panic!(
-                "{} is an unexpected error when uploading an object to another prefix",
+                "{} is an unexpected error when uploading data to a unauthorized prefix",
                 err
             ),
         };
@@ -327,7 +309,7 @@ fn integration_grant_share() {
             .download_object(&bucket1_name, &format!("{}2", object_key), None)
             .expect_err("download object")
         {
-            Error::Uplink(error::Uplink::Internal(_)) => {}
+            Error::Uplink(error::Uplink::PermissionDenied(_)) => {}
             err => panic!(
                 "{} is an unexpected error when downloading an object from another prefix",
                 err
@@ -339,7 +321,7 @@ fn integration_grant_share() {
             .list_objects(&bucket1_name, None)
             .expect("list objects without list permissions");
         match it.collect::<UlResult<Vec<Object>>>().expect_err("list objects iterator without list permissions") {
-            Error::Uplink(error::Uplink::Internal(_)) => {},
+            Error::Uplink(error::Uplink::PermissionDenied(_)) => {},
             err => panic!("{} is an unexpected error when listing objects with an upload restricted access grant", err),
         };
 
@@ -347,8 +329,8 @@ fn integration_grant_share() {
             .list_objects(&bucket1_name, None)
             .expect("list objects without list permissions");
         match it.collect::<UlResult<Vec<Object>>>().expect_err("list objects iterator without list permissions") {
-            Error::Uplink(error::Uplink::Internal(_)) => {},
-            err => panic!("{} is an unexpected error when listing objects with an upload restricted access grant", err),
+            Error::Uplink(error::Uplink::PermissionDenied(_)) => {},
+            err => panic!("{} is an unexpected error when listing objects with a download restricted access grant", err),
         };
 
         // Upload access grant cannot download the object.
@@ -356,7 +338,7 @@ fn integration_grant_share() {
             .download_object(&bucket1_name, object_key, None)
             .expect_err("download object");
         match err {
-            Error::Uplink(error::Uplink::Internal(_)) => {},
+            Error::Uplink(error::Uplink::PermissionDenied(_)) => {},
             err => panic!("{} is an unexpected error when downloading the object with an upload restricted access grant", err),
         };
 
@@ -368,7 +350,7 @@ fn integration_grant_share() {
             .write_all(object_data.as_bytes())
             .expect("upload object write data");
         match upload.commit().expect_err("commit an object upload with a download restricted access grant") {
-            Error::Uplink(error::Uplink::Internal(_)) => {},
+            Error::Uplink(error::Uplink::PermissionDenied(_)) => {},
             err => panic!("{} is an unexpected error when uploading an object with a download restricted access grant", err),
         };
 
@@ -377,7 +359,7 @@ fn integration_grant_share() {
             .delete_object(&bucket1_name, object_key)
             .expect_err("list objects without delete permissions");
         match err {
-            Error::Uplink(error::Uplink::Internal(_)) => {},
+            Error::Uplink(error::Uplink::PermissionDenied(_)) => {},
             err => panic!("{} is an unexpected error when deleting the object with an upload restricted access grant", err),
         };
 
@@ -385,7 +367,7 @@ fn integration_grant_share() {
             .delete_object(&bucket1_name, object_key)
             .expect_err("list objects without delete permissions");
         match err {
-            Error::Uplink(error::Uplink::Internal(_)) => {},
+            Error::Uplink(error::Uplink::PermissionDenied(_)) => {},
             err => panic!("{} is an unexpected error when deleting the object with a download restricted access grant", err),
         };
     }
@@ -410,7 +392,7 @@ fn integration_grant_share() {
         let project = &mut Project::open(&grant);
         let it = project.list_buckets(None);
         match it.collect::<UlResult<Vec<Bucket>>>().expect_err("listing buckets with a grant that cannot be used before a future date") {
-            Error::Uplink(error::Uplink::Internal(_)) => {}
+            Error::Uplink(error::Uplink::PermissionDenied(_)) => {}
             err => panic!(
                 "{} is an unexpected error when listing buckets with a grant that cannot be used before a future date",
                 err
@@ -427,7 +409,7 @@ fn integration_grant_share() {
         thread::sleep(Duration::from_secs(2));
         let it = project.list_buckets(None);
         match it.collect::<UlResult<Vec<Bucket>>>().expect_err("listing buckets with a grant that cannot be used after a past date") {
-            Error::Uplink(error::Uplink::Internal(_)) => {}
+            Error::Uplink(error::Uplink::PermissionDenied(_)) => {}
             err => panic!(
                 "{} is an unexpected error when listing buckets with a grant that cannot be used after a past date",
                 err

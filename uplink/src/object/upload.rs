@@ -135,7 +135,7 @@ impl std::io::Write for Upload {
             ulksys::uplink_upload_write(
                 self.inner.upload,
                 (buf.as_ptr() as *mut u8).cast(),
-                buf.len() as u64,
+                buf.len(),
             )
         };
 
@@ -310,8 +310,8 @@ impl Part {
         };
 
         let part_number = part.part_number;
-        let size = part.size as usize;
-        let mut etag = Vec::with_capacity(part.etag_length as usize);
+        let size = part.size;
+        let mut etag = Vec::with_capacity(part.etag_length);
         // SAFETY: we trust the FFI in returning a correct length of the array that the `etag`
         // pointer points to, hence we believe that we are not accessing to a memory outside of the
         // array's bounds.
@@ -492,7 +492,7 @@ impl std::io::Write for PartUpload {
             ulksys::uplink_part_upload_write(
                 self.inner.part_upload,
                 (buf.as_ptr() as *mut u8).cast(),
-                buf.len() as u64,
+                buf.len(),
             )
         };
 

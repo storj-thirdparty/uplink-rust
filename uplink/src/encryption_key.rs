@@ -36,7 +36,7 @@ impl EncryptionKey {
             ulksys::uplink_derive_encryption_key(
                 passphrase.as_ptr() as *mut c_char,
                 salt.as_ptr() as *mut c_void,
-                salt.len() as u64,
+                salt.len(),
             )
         };
 

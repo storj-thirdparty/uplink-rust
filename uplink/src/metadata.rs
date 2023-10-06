@@ -50,7 +50,7 @@ impl Custom {
             return Default::default();
         }
 
-        let mut custom = Self::with_capacity(uc_custom.count as usize);
+        let mut custom = Self::with_capacity(uc_custom.count);
         // SAFETY: we trust that the FFI contains a valid pointer to entries and the counter has
         // the exact number of entries, and each entry has a key-value C string with exactly the
         // length specified without leaning that they end with the NULL byte because they could
@@ -60,13 +60,11 @@ impl Custom {
 
             for i in 0..uc_custom.count as isize {
                 let entry = uc_custom.entries.offset(i) as *const ulksys::UplinkCustomMetadataEntry;
-                let key = unchecked_ptr_c_char_and_length_to_string(
-                    (*entry).key,
-                    (*entry).key_length as usize,
-                );
+                let key =
+                    unchecked_ptr_c_char_and_length_to_string((*entry).key, (*entry).key_length);
                 let value = unchecked_ptr_c_char_and_length_to_string(
                     (*entry).value,
-                    (*entry).value_length as usize,
+                    (*entry).value_length,
                 );
 
                 custom.insert(key, value);
@@ -161,16 +159,16 @@ impl UplinkCustomMetadataWrapper {
         for (k, v) in custom.iter() {
             entries.push(ulksys::UplinkCustomMetadataEntry {
                 key: k.as_ptr() as *mut i8,
-                key_length: k.len() as u64,
+                key_length: k.len(),
                 value: v.as_ptr() as *mut i8,
-                value_length: v.len() as u64,
+                value_length: v.len(),
             });
         }
 
         UplinkCustomMetadataWrapper {
             custom_metadata: ulksys::UplinkCustomMetadata {
                 entries: entries.as_mut_ptr(),
-                count: entries.len() as u64,
+                count: entries.len(),
             },
             _entries: entries,
         }

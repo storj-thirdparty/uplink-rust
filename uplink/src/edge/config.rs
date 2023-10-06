@@ -53,8 +53,23 @@ impl Config {
             inner: ulksys::EdgeConfig {
                 auth_service_address: addr.into_raw(),
                 certificate_pem: ptr::null_mut(),
+                insecure_unencrypted_connection: false,
             },
         })
+    }
+
+    /// Create a new configuration as [Self::new], but makes possible to connect to an Auth service
+    /// without TLS, sending plain-text request over the network and receiving plain-text
+    /// responses.
+    ///
+    /// DO NOT use it in production.
+    ///
+    /// The same restrictions apply and return the same errors as [Self::new].
+    pub fn new_insecure(auth_service_addr: &str) -> Result<Self> {
+        let mut config = Self::new(auth_service_addr)?;
+
+        config.inner.insecure_unencrypted_connection = true;
+        Ok(config)
     }
 
     /// Creates a new configuration that uses the specified Auth service address and the root
