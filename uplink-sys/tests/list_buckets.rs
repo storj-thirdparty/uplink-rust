@@ -1,6 +1,5 @@
 use std::env;
 use std::ffi::{CStr, CString};
-use std::fs;
 
 #[test]
 fn list_buckets() {
