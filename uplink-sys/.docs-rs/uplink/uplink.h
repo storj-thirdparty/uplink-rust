@@ -155,18 +155,23 @@ extern "C" {
 
 
 // uplink_parse_access parses serialized access grant string.
+//
 extern UplinkAccessResult uplink_parse_access(uplink_const_char* accessString);
 
 // uplink_request_access_with_passphrase requests satellite for a new access grant using a passhprase.
+//
 extern UplinkAccessResult uplink_request_access_with_passphrase(uplink_const_char* satellite_address, uplink_const_char* api_key, uplink_const_char* passphrase);
 
 // uplink_access_satellite_address returns the satellite node URL for this access grant.
+//
 extern UplinkStringResult uplink_access_satellite_address(UplinkAccess* access);
 
 // uplink_access_serialize serializes access grant into a string.
+//
 extern UplinkStringResult uplink_access_serialize(UplinkAccess* access);
 
 // uplink_access_share creates new access grant with specific permission. Permission will be applied to prefixes when defined.
+//
 extern UplinkAccessResult uplink_access_share(UplinkAccess* access, UplinkPermission permission, UplinkSharePrefix* prefixes, GoInt prefixes_count);
 
 // uplink_access_override_encryption_key overrides the root encryption key for the prefix in
@@ -174,92 +179,116 @@ extern UplinkAccessResult uplink_access_share(UplinkAccess* access, UplinkPermis
 //
 // This function is useful for overriding the encryption key in user-specific
 // access grants when implementing multitenancy in a single app bucket.
+//
 extern UplinkError* uplink_access_override_encryption_key(UplinkAccess* access, uplink_const_char* bucket, uplink_const_char* prefix, UplinkEncryptionKey* encryptionKey);
 
 // uplink_free_string_result frees the resources associated with string result.
+//
 extern void uplink_free_string_result(UplinkStringResult result);
 
 // uplink_free_access_result frees the resources associated with access grant.
+//
 extern void uplink_free_access_result(UplinkAccessResult result);
 
 // uplink_stat_bucket returns information about a bucket.
+//
 extern UplinkBucketResult uplink_stat_bucket(UplinkProject* project, uplink_const_char* bucket_name);
 
 // uplink_create_bucket creates a new bucket.
 //
 // When bucket already exists it returns a valid Bucket and ErrBucketExists.
+//
 extern UplinkBucketResult uplink_create_bucket(UplinkProject* project, uplink_const_char* bucket_name);
 
 // uplink_ensure_bucket creates a new bucket and ignores the error when it already exists.
 //
 // When bucket already exists it returns a valid Bucket and ErrBucketExists.
+//
 extern UplinkBucketResult uplink_ensure_bucket(UplinkProject* project, uplink_const_char* bucket_name);
 
 // uplink_delete_bucket deletes a bucket.
 //
 // When bucket is not empty it returns ErrBucketNotEmpty.
+//
 extern UplinkBucketResult uplink_delete_bucket(UplinkProject* project, uplink_const_char* bucket_name);
 
 // uplink_delete_bucket_with_objects deletes a bucket and all objects within that bucket.
 //
 // When there are concurrent writes to the bucket it returns ErrBucketNotEmpty.
+//
 extern UplinkBucketResult uplink_delete_bucket_with_objects(UplinkProject* project, uplink_const_char* bucket_name);
 
 // uplink_free_bucket_result frees memory associated with the BucketResult.
+//
 extern void uplink_free_bucket_result(UplinkBucketResult result);
 
 // uplink_free_bucket frees memory associated with the bucket.
+//
 extern void uplink_free_bucket(UplinkBucket* bucket);
 
 // uplink_list_buckets lists buckets.
+//
 extern UplinkBucketIterator* uplink_list_buckets(UplinkProject* project, UplinkListBucketsOptions* options);
 
 // uplink_bucket_iterator_next prepares next Bucket for reading.
 //
 // It returns false if the end of the iteration is reached and there are no more buckets, or if there is an error.
+//
 extern _Bool uplink_bucket_iterator_next(UplinkBucketIterator* iterator);
 
 // uplink_bucket_iterator_err returns error, if one happened during iteration.
+//
 extern UplinkError* uplink_bucket_iterator_err(UplinkBucketIterator* iterator);
 
 // uplink_bucket_iterator_item returns the current bucket in the iterator.
+//
 extern UplinkBucket* uplink_bucket_iterator_item(UplinkBucketIterator* iterator);
 
 // uplink_free_bucket_iterator frees memory associated with the BucketIterator.
+//
 extern void uplink_free_bucket_iterator(UplinkBucketIterator* iterator);
 
 // uplink_config_request_access_with_passphrase requests satellite for a new access grant using a passhprase.
+//
 extern UplinkAccessResult uplink_config_request_access_with_passphrase(UplinkConfig config, uplink_const_char* satellite_address, uplink_const_char* api_key, uplink_const_char* passphrase);
 
 // uplink_config_open_project opens project using access grant.
+//
 extern UplinkProjectResult uplink_config_open_project(UplinkConfig config, UplinkAccess* access);
 
 // uplink_copy_object copies object to a same/different bucket and key.
+//
 extern UplinkObjectResult uplink_copy_object(UplinkProject* project, uplink_const_char* old_bucket_name, uplink_const_char* old_object_key, uplink_const_char* new_bucket_name, uplink_const_char* new_object_key, UplinkCopyObjectOptions* options);
 
 // uplink_download_object starts  download to the specified key.
+//
 extern UplinkDownloadResult uplink_download_object(UplinkProject* project, uplink_const_char* bucket_name, uplink_const_char* object_key, UplinkDownloadOptions* options);
 
 // uplink_download_read downloads from object's data stream into bytes up to length amount.
 // It returns the number of bytes read (0 <= bytes_read <= length) and
 // any error encountered that caused the read to stop early.
+//
 extern UplinkReadResult uplink_download_read(UplinkDownload* download, void* bytes, size_t length);
 
 // uplink_download_info returns information about the downloaded object.
+//
 extern UplinkObjectResult uplink_download_info(UplinkDownload* download);
 
 // uplink_free_read_result frees any resources associated with read result.
+//
 extern void uplink_free_read_result(UplinkReadResult result);
 
 // uplink_close_download closes the download.
+//
 extern UplinkError* uplink_close_download(UplinkDownload* download);
 
 // uplink_free_download_result frees any associated resources.
+//
 extern void uplink_free_download_result(UplinkDownloadResult result);
 
-//
 // edge_register_access gets credentials for the Storj-hosted Gateway-mt and linkshare service.
 // All files uploaded under the Access are then accessible via those services.
+//
 extern EdgeCredentialsResult edge_register_access(EdgeConfig config, UplinkAccess* access, EdgeRegisterAccessOptions* options);
 extern void edge_free_credentials_result(EdgeCredentialsResult result);
 extern void edge_free_credentials(EdgeCredentials* credentials);
@@ -273,6 +302,7 @@ extern void edge_free_credentials(EdgeCredentials* credentials);
 // accessKeyId: as returned from RegisterAccess. Must be associated with public visibility.
 // bucket: optional bucket, if empty shares the entire project.
 // key: optional object key or prefix, if empty shares the entire bucket. A prefix must end with "/".
+//
 extern UplinkStringResult edge_join_share_url(uplink_const_char* baseURL, uplink_const_char* accessKeyID, uplink_const_char* bucket, uplink_const_char* key, EdgeShareURLOptions* options);
 
 // uplink_derive_encryption_key derives a salted encryption key for passphrase using the
@@ -280,170 +310,222 @@ extern UplinkStringResult edge_join_share_url(uplink_const_char* baseURL, uplink
 //
 // This function is useful for deriving a salted encryption key for users when
 // implementing multitenancy in a single app bucket.
+//
 extern UplinkEncryptionKeyResult uplink_derive_encryption_key(uplink_const_char* passphrase, void* salt, size_t length);
 
 // uplink_free_encryption_key_result frees the resources associated with encryption key.
+//
 extern void uplink_free_encryption_key_result(UplinkEncryptionKeyResult result);
 
 // uplink_free_error frees error data.
+//
 extern void uplink_free_error(UplinkError* err);
 
 // uplink_internal_UniverseIsEmpty returns true if nothing is stored in the global map.
+//
 extern GoUint8 uplink_internal_UniverseIsEmpty();
 
 // uplink_move_object moves object to a different bucket or/and key.
+//
 extern UplinkError* uplink_move_object(UplinkProject* project, uplink_const_char* old_bucket_name, uplink_const_char* old_object_key, uplink_const_char* new_bucket_name, uplink_const_char* new_object_key, UplinkMoveObjectOptions* options);
 
 // uplink_begin_upload begins a new multipart upload to bucket and key.
+//
 extern UplinkUploadInfoResult uplink_begin_upload(UplinkProject* project, uplink_const_char* bucket_name, uplink_const_char* object_key, UplinkUploadOptions* options);
 
 // uplink_free_upload_info_result frees any resources associated with upload info result.
+//
 extern void uplink_free_upload_info_result(UplinkUploadInfoResult result);
 
 // uplink_free_upload_info frees memory associated with upload info.
+//
 extern void uplink_free_upload_info(UplinkUploadInfo* info);
 
 // uplink_commit_upload commits a multipart upload to bucket and key started with uplink_begin_upload.
+//
 extern UplinkCommitUploadResult uplink_commit_upload(UplinkProject* project, uplink_const_char* bucket_name, uplink_const_char* object_key, uplink_const_char* upload_id, UplinkCommitUploadOptions* options);
 
 // uplink_free_commit_upload_result frees any resources associated with commit upload result.
+//
 extern void uplink_free_commit_upload_result(UplinkCommitUploadResult result);
 
 // uplink_abort_upload aborts a multipart upload started with uplink_begin_upload.
+//
 extern UplinkError* uplink_abort_upload(UplinkProject* project, uplink_const_char* bucket_name, uplink_const_char* object_key, uplink_const_char* upload_id);
 
 // uplink_upload_part starts an part upload to the specified key nad part number.
+//
 extern UplinkPartUploadResult uplink_upload_part(UplinkProject* project, uplink_const_char* bucket_name, uplink_const_char* object_key, uplink_const_char* upload_id, uint32_t part_number);
 
 // uplink_part_upload_write uploads len(p) bytes from p to the object's data stream.
 // It returns the number of bytes written from p (0 <= n <= len(p)) and
 // any error encountered that caused the write to stop early.
+//
 extern UplinkWriteResult uplink_part_upload_write(UplinkPartUpload* upload, void* bytes, size_t length);
 
 // uplink_part_upload_commit commits the uploaded part data.
+//
 extern UplinkError* uplink_part_upload_commit(UplinkPartUpload* upload);
 
 // uplink_part_upload_abort aborts a part upload.
+//
 extern UplinkError* uplink_part_upload_abort(UplinkPartUpload* upload);
 
 // uplink_part_upload_set_etag sets part ETag.
+//
 extern UplinkError* uplink_part_upload_set_etag(UplinkPartUpload* upload, uplink_const_char* etag);
 
 // uplink_part_upload_info returns the last information about the uploaded part.
+//
 extern UplinkPartResult uplink_part_upload_info(UplinkPartUpload* upload);
 
 // uplink_free_part_result frees memory associated with the part result.
+//
 extern void uplink_free_part_result(UplinkPartResult result);
 
 // uplink_free_part_upload_result frees memory associated with the part upload result.
+//
 extern void uplink_free_part_upload_result(UplinkPartUploadResult result);
 
 // uplink_free_part frees memory associated with the Part.
+//
 extern void uplink_free_part(UplinkPart* part);
 
 // uplink_list_uploads lists uploads.
+//
 extern UplinkUploadIterator* uplink_list_uploads(UplinkProject* project, uplink_const_char* bucket_name, UplinkListUploadsOptions* options);
 
 // uplink_upload_iterator_next prepares next entry for reading.
 //
 // It returns false if the end of the iteration is reached and there are no more uploads, or if there is an error.
+//
 extern _Bool uplink_upload_iterator_next(UplinkUploadIterator* iterator);
 
 // uplink_upload_iterator_err returns error, if one happened during iteration.
+//
 extern UplinkError* uplink_upload_iterator_err(UplinkUploadIterator* iterator);
 
 // uplink_upload_iterator_item returns the current entry in the iterator.
+//
 extern UplinkUploadInfo* uplink_upload_iterator_item(UplinkUploadIterator* iterator);
 
 // uplink_free_upload_iterator frees memory associated with the UploadIterator.
+//
 extern void uplink_free_upload_iterator(UplinkUploadIterator* iterator);
 
 // uplink_list_upload_parts lists uploaded parts.
+//
 extern UplinkPartIterator* uplink_list_upload_parts(UplinkProject* project, uplink_const_char* bucket_name, uplink_const_char* object_key, uplink_const_char* upload_id, UplinkListUploadPartsOptions* options);
 
 // uplink_part_iterator_next prepares next entry for reading.
 //
 // It returns false if the end of the iteration is reached and there are no more parts, or if there is an error.
+//
 extern _Bool uplink_part_iterator_next(UplinkPartIterator* iterator);
 
 // uplink_part_iterator_err returns error, if one happened during iteration.
+//
 extern UplinkError* uplink_part_iterator_err(UplinkPartIterator* iterator);
 
 // uplink_part_iterator_item returns the current entry in the iterator.
+//
 extern UplinkPart* uplink_part_iterator_item(UplinkPartIterator* iterator);
 
 // uplink_free_part_iterator frees memory associated with the UplinkPartIterator.
+//
 extern void uplink_free_part_iterator(UplinkPartIterator* iterator);
 
 // uplink_stat_object returns information about an object at the specific key.
+//
 extern UplinkObjectResult uplink_stat_object(UplinkProject* project, uplink_const_char* bucket_name, uplink_const_char* object_key);
 
 // uplink_delete_object deletes an object.
+//
 extern UplinkObjectResult uplink_delete_object(UplinkProject* project, uplink_const_char* bucket_name, uplink_const_char* object_key);
 
 // uplink_free_object_result frees memory associated with the ObjectResult.
+//
 extern void uplink_free_object_result(UplinkObjectResult obj);
 
 // uplink_free_object frees memory associated with the Object.
+//
 extern void uplink_free_object(UplinkObject* obj);
 
 // uplink_update_object_metadata replaces the custom metadata for the object at the specific key with new_metadata.
 // Any existing custom metadata will be deleted.
+//
 extern UplinkError* uplink_update_object_metadata(UplinkProject* project, uplink_const_char* bucket_name, uplink_const_char* object_key, UplinkCustomMetadata new_metadata, UplinkUploadObjectMetadataOptions* options);
 
 // uplink_list_objects lists objects.
+//
 extern UplinkObjectIterator* uplink_list_objects(UplinkProject* project, uplink_const_char* bucket_name, UplinkListObjectsOptions* options);
 
 // uplink_object_iterator_next prepares next Object for reading.
 //
 // It returns false if the end of the iteration is reached and there are no more objects, or if there is an error.
+//
 extern _Bool uplink_object_iterator_next(UplinkObjectIterator* iterator);
 
 // uplink_object_iterator_err returns error, if one happened during iteration.
+//
 extern UplinkError* uplink_object_iterator_err(UplinkObjectIterator* iterator);
 
 // uplink_object_iterator_item returns the current object in the iterator.
+//
 extern UplinkObject* uplink_object_iterator_item(UplinkObjectIterator* iterator);
 
 // uplink_free_object_iterator frees memory associated with the ObjectIterator.
+//
 extern void uplink_free_object_iterator(UplinkObjectIterator* iterator);
 
 // uplink_open_project opens project using access grant.
+//
 extern UplinkProjectResult uplink_open_project(UplinkAccess* access);
 
 // uplink_close_project closes the project.
+//
 extern UplinkError* uplink_close_project(UplinkProject* project);
 
 // uplink_revoke_access revokes the API key embedded in the provided access grant.
+//
 extern UplinkError* uplink_revoke_access(UplinkProject* project, UplinkAccess* access);
 
 // uplink_free_project_result frees any associated resources.
+//
 extern void uplink_free_project_result(UplinkProjectResult result);
 
 // uplink_upload_object starts an upload to the specified key.
+//
 extern UplinkUploadResult uplink_upload_object(UplinkProject* project, uplink_const_char* bucket_name, uplink_const_char* object_key, UplinkUploadOptions* options);
 
 // uplink_upload_write uploads len(p) bytes from p to the object's data stream.
 // It returns the number of bytes written from p (0 <= n <= len(p)) and
 // any error encountered that caused the write to stop early.
+//
 extern UplinkWriteResult uplink_upload_write(UplinkUpload* upload, void* bytes, size_t length);
 
 // uplink_upload_commit commits the uploaded data.
+//
 extern UplinkError* uplink_upload_commit(UplinkUpload* upload);
 
 // uplink_upload_abort aborts an upload.
+//
 extern UplinkError* uplink_upload_abort(UplinkUpload* upload);
 
 // uplink_upload_info returns the last information about the uploaded object.
+//
 extern UplinkObjectResult uplink_upload_info(UplinkUpload* upload);
 
 // uplink_upload_set_custom_metadata returns the last information about the uploaded object.
+//
 extern UplinkError* uplink_upload_set_custom_metadata(UplinkUpload* upload, UplinkCustomMetadata custom);
 
 // uplink_free_write_result frees any resources associated with write result.
+//
 extern void uplink_free_write_result(UplinkWriteResult result);
 
 // uplink_free_upload_result closes the upload and frees any associated resources.
+//
 extern void uplink_free_upload_result(UplinkUploadResult result);
 
 #ifdef __cplusplus
