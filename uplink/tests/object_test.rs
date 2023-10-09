@@ -423,7 +423,8 @@ fn integration_object_copy() {
     let mut it = project
         .list_objects(&bucket_name, Some(&list_ops))
         .expect("list objects");
-    for obj in it.next().expect("list 1 object of 2") {
+    while let Some(robj) = it.next() {
+        let obj = robj.expect("no error");
         if obj.key == object_key {
             assert_eq!(
                 obj.metadata_system.created, object_original.metadata_system.created,
