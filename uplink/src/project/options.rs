@@ -93,9 +93,9 @@ impl ListBuckets {
 
 /// Options for listing objects.
 #[derive(Debug, Default)]
-pub struct ListObjects<'a> {
+pub struct ListObjects {
     /// Only list objects with this key prefix. When not empty, it must ends with slash.
-    prefix: &'a str,
+    ///
     /// C representation of `prefix` for providing it to the FFI and guards its lifetime until
     /// `self` gets dropped.
     inner_prefix: CString,
@@ -103,7 +103,7 @@ pub struct ListObjects<'a> {
     /// list.
     /// The first item of the list is the one after the cursor.
     /// The list of objects depends on the `prefix`.
-    cursor: &'a str,
+    ///
     /// C representation of `cursor` for providing it to the FFI and guards its lifetime until
     /// `self` gets dropped.
     inner_cursor: CString,
@@ -115,14 +115,14 @@ pub struct ListObjects<'a> {
     pub custom: bool,
 }
 
-impl<'a> ListObjects<'a> {
+impl ListObjects {
     /// Creates options of listing objects options with the specified prefix.
     ///
     /// `prefix` must:
     /// * not be empty.
     /// * end with '/'.
     /// * not contain any null byte (0 byte).
-    pub fn with_prefix(prefix: &'a str) -> Result<Self> {
+    pub fn with_prefix(prefix: &str) -> Result<Self> {
         if !prefix.ends_with('/') {
             return Err(Error::new_invalid_arguments(
                 "prefix",
@@ -138,7 +138,7 @@ impl<'a> ListObjects<'a> {
     /// `cursor` must:
     /// * not be empty.
     /// * not contain any null byte (0 byte).
-    pub fn with_cursor(cursor: &'a str) -> Result<Self> {
+    pub fn with_cursor(cursor: &str) -> Result<Self> {
         if cursor.is_empty() {
             return Err(Error::new_invalid_arguments("cursor", "cannot be empty"));
         }
@@ -153,7 +153,7 @@ impl<'a> ListObjects<'a> {
     /// * not contain any null byte (0 byte).
     ///
     /// `prefix` must also end with '/'.
-    pub fn with_prefix_and_cursor(prefix: &'a str, cursor: &'a str) -> Result<Self> {
+    pub fn with_prefix_and_cursor(prefix: &str, cursor: &str) -> Result<Self> {
         if !prefix.ends_with('/') {
             return Err(Error::new_invalid_arguments(
                 "prefix",
@@ -173,14 +173,12 @@ impl<'a> ListObjects<'a> {
     ///
     /// This is a convenient constructor to be used by the public constructors which impose more
     /// contains  on `prefix` and `cursor`.
-    fn new(prefix: &'a str, cursor: &'a str) -> Result<Self> {
+    fn new(prefix: &str, cursor: &str) -> Result<Self> {
         let inner_prefix = helpers::cstring_from_str_fn_arg("prefix", prefix)?;
         let inner_cursor = helpers::cstring_from_str_fn_arg("cursor", cursor)?;
 
         Ok(Self {
-            prefix,
             inner_prefix,
-            cursor,
             inner_cursor,
             ..Default::default()
         })
@@ -200,9 +198,9 @@ impl<'a> ListObjects<'a> {
 
 /// Options for listing uncommitted uploads.
 #[derive(Debug, Default)]
-pub struct ListUploads<'a> {
+pub struct ListUploads {
     /// Only list uncommitted uploads with this key prefix. When not empty, it must ends with slash.
-    prefix: &'a str,
+    ///
     /// C representation of `prefix` for providing it to the FFI and guards its lifetime until
     /// `self` gets dropped.
     inner_prefix: CString,
@@ -210,7 +208,7 @@ pub struct ListUploads<'a> {
     /// list.
     /// The first item of the list is the one after the cursor.
     /// The list of objects depends on the `prefix`.
-    cursor: &'a str,
+    ///
     /// C representation of `cursor` for providing it to the FFI and guards its lifetime until
     /// `self` gets dropped.
     inner_cursor: CString,
@@ -222,14 +220,14 @@ pub struct ListUploads<'a> {
     pub custom: bool,
 }
 
-impl<'a> ListUploads<'a> {
+impl ListUploads {
     /// Creates options of listing uncommitted uploads options with the specified prefix.
     ///
     /// `prefix` must:
     /// * not be empty.
     /// * end with '/'.
     /// * not contain any null byte (0 byte).
-    pub fn with_prefix(prefix: &'a str) -> Result<Self> {
+    pub fn with_prefix(prefix: &str) -> Result<Self> {
         if !prefix.ends_with('/') {
             return Err(Error::new_invalid_arguments(
                 "prefix",
@@ -245,7 +243,7 @@ impl<'a> ListUploads<'a> {
     /// `cursor` must:
     /// * not be empty.
     /// * not contain any null byte (0 byte).
-    pub fn with_cursor(cursor: &'a str) -> Result<Self> {
+    pub fn with_cursor(cursor: &str) -> Result<Self> {
         if cursor.is_empty() {
             return Err(Error::new_invalid_arguments("cursor", "cannot be empty"));
         }
@@ -260,7 +258,7 @@ impl<'a> ListUploads<'a> {
     /// * not contain any null byte (0 byte).
     ///
     /// `prefix` must also end with '/'.
-    pub fn with_prefix_and_cursor(prefix: &'a str, cursor: &'a str) -> Result<Self> {
+    pub fn with_prefix_and_cursor(prefix: &str, cursor: &str) -> Result<Self> {
         if !prefix.ends_with('/') {
             return Err(Error::new_invalid_arguments(
                 "prefix",
@@ -280,14 +278,12 @@ impl<'a> ListUploads<'a> {
     ///
     /// This is a convenient constructor to be used by the public constructors which impose more
     /// contains  on `prefix` and `cursor`.
-    fn new(prefix: &'a str, cursor: &'a str) -> Result<Self> {
+    fn new(prefix: &str, cursor: &str) -> Result<Self> {
         let inner_prefix = helpers::cstring_from_str_fn_arg("prefix", prefix)?;
         let inner_cursor = helpers::cstring_from_str_fn_arg("cursor", cursor)?;
 
         Ok(Self {
-            prefix,
             inner_prefix,
-            cursor,
             inner_cursor,
             ..Default::default()
         })
