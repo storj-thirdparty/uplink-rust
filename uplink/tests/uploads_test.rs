@@ -124,9 +124,7 @@ fn integration_upload_multipart_commit() {
         .next()
         .expect("an item in the uploads list")
         .expect("a pending upload");
-    // TODO(https://github.com/storj-thirdparty/uplink-rust/issues/50) uncomment the following
-    // assertion.
-    // assert_eq!(upload_info.upload_id, item.upload_id, "pending upload key");
+    assert_eq!(upload_info.upload_id, item.upload_id, "pending upload key");
     assert_eq!(object_multipart_key, item.key, "pending upload key");
     assert!(!item.is_prefix, "pending upload is prefix");
     assert!(it.next().is_none(), "only one pending upload in the list");
@@ -144,7 +142,7 @@ fn integration_upload_multipart_commit() {
         )
         .expect("upload part 1");
     part.write_all(&data[data.len() / 2..])
-        .expect("write data mutipart 1");
+        .expect("write data multipart 1");
     part.commit().expect("commit multipart 1");
 
     // List parts of the multipart pending upload.
@@ -180,7 +178,7 @@ fn integration_upload_multipart_commit() {
         )
         .expect("upload part 0");
     part.write_all(&data[..data.len() / 2])
-        .expect("write data mutipart 0");
+        .expect("write data multipart 0");
 
     let etag = "this-is-its-etag";
     part.set_etag(etag.as_bytes())
@@ -303,7 +301,7 @@ fn integration_upload_multipart_abort_and_list_parts_cursor() {
         )
         .expect("upload part 0");
     part.write_all(&data[..data.len() / 2])
-        .expect("write data mutipart 0");
+        .expect("write data multipart 0");
 
     let etag = "this-is-its-etag";
     part.set_etag(etag.as_bytes())
@@ -319,7 +317,7 @@ fn integration_upload_multipart_abort_and_list_parts_cursor() {
         )
         .expect("upload part 1");
     part.write_all(&data[data.len() / 2..])
-        .expect("write data mutipart 1");
+        .expect("write data multipart 1");
     part.commit().expect("commit multipart 1");
 
     // List parts of the multipart pending upload using cursor, so only one of the parts should be
