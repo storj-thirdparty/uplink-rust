@@ -5,9 +5,9 @@ mod common;
 
 const AUTH_SERVICE_URL: &str = "localhost:8888";
 
-// TODO(https://github.com/storj-thirdparty/uplink-rust/issues/48): we needed the new Uplink API for
-// being able to run this test successfully, but it turns out that we need to update storj-up to
-// make it work. Remove the `ignore` annotation and adjust the test with the new API.
+// TODO: this test fails because edge::Config::register_gateway_access returns an error.
+// We have to see if this error only happens when using storj-up, or it also happens with a
+// production gateway.
 #[test]
 #[ignore]
 fn integration_config_register_access() {
