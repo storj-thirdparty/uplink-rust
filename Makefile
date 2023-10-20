@@ -45,7 +45,7 @@ integration-tests-env-down:
 	# than localhost and then it doesn't resolve.
 	# See: https://github.com/storj/up/issues/45#issuecomment-1288808260
 	@docker compose exec -T satellite-api storj-up credentials --s3 -e \
-		-a http://authservice:8888 -s satellite-api \
+		-a http://authservice:8888 -s satellite-api:7777 -c satellite-api:10000 \
 		| grep -E 'AWS|STORJ_GATEWAY' >> .tmp/env
 
 .tmp/up/storj-up: .tmp/up
@@ -54,4 +54,4 @@ integration-tests-env-down:
 .tmp/up:
 	mkdir -p .tmp
 	cd .tmp; git clone https://github.com/storj/up.git
-	cd .tmp/up; git checkout v1.1.0
+	cd .tmp/up; git checkout v1.2.3

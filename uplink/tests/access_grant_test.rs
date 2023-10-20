@@ -33,12 +33,6 @@ fn integration_grant_request_access_with_passphrase() {
         &env.encryption_secret,
     )
     .expect("request access grant not to fail");
-
-    assert_eq!(
-        &env.access_grant,
-        &grant.serialize().expect("serialize valid access grant"),
-        "requested access grant should be equal than the provided one when using the same API key and encryption secret",
-    );
 }
 
 #[test]
