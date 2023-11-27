@@ -5,7 +5,7 @@ libdir=${exec_prefix}/lib
 
 Name: uplink
 Description: C library for Storj V3 Network.
-Version: v1.8.0
+Version: 1.8.1
 Cflags: -I${includedir}
 Libs: -L${libdir} -luplink
 Libs.private: -lpthread
