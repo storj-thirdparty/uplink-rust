@@ -33,9 +33,9 @@ offering an safe and idiomatic Rust [Storj Uplink][storj-uplink].
 Because it relies on `uplink-sys` and `uplink-sys` requires [Go](https://golang.org),
 using this crate also requires Go.
 
-### Development requirements
+### Development
 
-For development the only requirements are Rust and Go.
+For development the only requirements are Rust, Go, and clang.
 
 For running the integration tests you need a Docker version that has the `compose`
 command, which is the `docker-compose` tool that it's now integrated in Docker.
@@ -43,6 +43,12 @@ The command is needed because the Makefile invoked, but you should be able to
 use a Docker version without the `compose` command,  using the `docker-compose`,
 however, you will have to run by hand or make an straightforward change in the
 Makefile.
+
+When some integration test fails it may provoke the failure of other integration tests to fail in
+subsequent runs. This is because the previous executed test which failed left garbage data in the
+satellite/edge services. To execute again the tests without having to execute a full clean up, you
+may go to the temporary directory _../.tmp/up_ and run `docker compose down` and
+`docker compose up -d` and then execute `make test-integrationa`.
 
 
 [storj-uplink]: https://github.com/storj/uplink
