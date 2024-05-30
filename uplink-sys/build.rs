@@ -111,7 +111,7 @@ fn main() {
                 .to_string_lossy(),
         )
         // Also make headers included by main header dependencies of the build
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         // Generate bindings
         .generate()
         .expect("Error generating bindings.")
