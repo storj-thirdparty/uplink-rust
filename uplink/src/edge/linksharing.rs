@@ -33,6 +33,11 @@ pub fn share_url(
     let key = helpers::cstring_from_str_fn_arg("key", key)?;
     let res: ulksys::UplinkStringResult;
 
+    // SAFETY: We are sure the CString(s) are valid because we created them from valid Rust strings.
+    // We  get raw pointers to them and to pass them to the FFI function.
+    // We are sure the FFI function will not free them.
+    // We take the ownership back for the ones that we transferred the ownership to the FFI
+    // function to drop them and not leak memory.
     unsafe {
         let c_base_url = base_url.into_raw();
         let c_access_key = access_key.into_raw();

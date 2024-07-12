@@ -8,6 +8,7 @@
 //! documentation and error messages when referencing the low level crate.
 
 #![deny(missing_docs)]
+#![deny(clippy::undocumented_unsafe_blocks)]
 
 pub mod access;
 pub mod bucket;
