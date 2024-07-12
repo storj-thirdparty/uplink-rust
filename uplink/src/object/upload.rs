@@ -84,6 +84,8 @@ impl Upload {
 
     /// Updates the custom metadata to be included with the object.
     pub fn set_custom_metadata(&mut self, metadata: &mut metadata::Custom) -> Result<()> {
+        // SAFETY: We are sure that FFI doesn't take ownership of the two parameters.
+        // Metadata FFI type is obtained from a safe wrapper.
         let err = unsafe {
             ulksys::uplink_upload_set_custom_metadata(
                 self.inner.upload,
@@ -236,6 +238,9 @@ impl Info {
         let is_prefix = upload.is_prefix;
         let upload_id;
         let key;
+        // SAFETY: We have guarantee that upload fields aren't null through the `ensure` method
+        // call of the `Ensurer` trait. We make a copy of the C string pointers to Rust strings,
+        // and we free the memory of the C strings to not leak memory.
         unsafe {
             upload_id = CStr::from_ptr(upload.upload_id)
                 .to_str()
@@ -445,6 +450,9 @@ impl PartUpload {
         }
 
         let c_etag = res.expect("BUG: this result was verified to be an Ok, probably the check has been accidentally removed due to a refactoring");
+        // SAFETY: We get a pointer from a Rust string after guarantee that doesn't contain any 0
+        // byte (NULL byte) and we pass it to the FFI.
+        // `self.inner` is guarantee to be valid by the constructor of this struct.
         let err = unsafe {
             ulksys::uplink_part_upload_set_etag(
                 self.inner.part_upload,
