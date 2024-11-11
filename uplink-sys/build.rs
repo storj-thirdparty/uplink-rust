@@ -32,7 +32,7 @@ fn main() {
     // Copy project to OUT_DIR for building
     Command::new("cp")
         .args([
-            "-R",
+            "-Rf",
             &uplink_c_src.to_string_lossy(),
             &uplink_c_dir.to_string_lossy(),
         ])
