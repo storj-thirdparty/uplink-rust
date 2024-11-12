@@ -42,8 +42,8 @@
 //! ## Constructors from FFI
 //!
 //! All the types that are created from FFI types has a constructor named `from_ffi_<type>` or
-//! `with_ffi_<type>`<sup>1</sup>, where `<type>` is the name of FFI's type (without the `Uplink` prefix) that
-//! they take as a parameter.
+//! `with_ffi_<type>`<sup>1</sup>, where `<type>` is the name of FFI's type (without the
+//! `Uplink` prefix) that hey take as a parameter.
 //!
 //! These constructors are never public, the most of them have crate visibility, but some of them
 //! have module visibility.
@@ -55,8 +55,8 @@
 //!
 //! * If the parameter is a raw pointer, the value must not be `NULL`.
 //! * If the FFI type is a result (i.e. `Uplink<type_name>Result`), the raw pointer field to the
-//! type (i.e. `Uplink<type_name>`) must not be `NULL` when the raw pointer field to the error (i.e.
-//! `UplinkError`) is `NULL`. See [the `Ensurer` trait](#the-ensurer-trait).
+//!   type (i.e. `Uplink<type_name>`) must not be `NULL` when the raw pointer field to the error
+//!   (i.e. `UplinkError`) is `NULL`. See [the `Ensurer` trait](#the-ensurer-trait).
 //!
 //! These panics are part of [the explicit documented panics](#panics).
 //!
@@ -126,15 +126,15 @@
 //! This exception exists because:
 //!
 //! * FFI mostly returns errors in "_result_" structs, for example
-//! [`UplinkBucketResult`](uplink_sys::UplinkBucketResult). These "_result_" types usually have
-//! their own "_free_" associated function for example
-//! [`uplink_free_bucket_result`](uplink_sys::uplink_free_bucket_result), hence, a double free race
-//! condition would happen if the caller needs to free a "_result_" does have an error but also a
-//! partial "_result value_".
+//!   [`UplinkBucketResult`](uplink_sys::UplinkBucketResult). These "_result_" types usually have
+//!   their own "_free_" associated function for example
+//!   [`uplink_free_bucket_result`](uplink_sys::uplink_free_bucket_result), hence, a double free
+//!   race condition would happen if the caller needs to free a "_result_" does have an error but
+//!   also a partial "_result value_".
 //! * These two constructors return an `Option` that it's `None` when the passed raw pointer to
-//! [`UplinkError`](uplink_sys::UplinkError) is `NULL` because it's pretty convenient to handle
-//! errors more idiomatically than having to always check by `NULL` inequality for calling or not
-//! the constructor.
+//!   [`UplinkError`](uplink_sys::UplinkError) is `NULL` because it's pretty convenient to handle
+//!   errors more idiomatically than having to always check by `NULL` inequality for calling or not
+//!   the constructor.
 //!
 //! ## From Rust to FFI
 //!
