@@ -26,7 +26,7 @@ pub fn cstring_from_str_fn_arg(arg_name: &str, arg_val: &str) -> Result<CString,
 ///
 /// The function is unsafe because:
 /// * It doesn't check for the end NULL byte as it doesn't stop if a NULL byte is before the end of
-///  the string.
+///   the string.
 /// * It doesn't check the characters to be UTF-8 valid, if the string contains
 ///   invalid UTF-8 bytes. Hence the resulting `String` would have non-deterministic character
 ///   value on their position.
