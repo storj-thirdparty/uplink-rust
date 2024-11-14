@@ -1,6 +1,6 @@
 [package]
 name = "uplink"
-version = "0.9.0"
+version = "0.10.0"
 authors = ["Ivan Fraixedes <ivan@fraixed.es>"]
 edition = "2021"
 description = "Idiomatic and safe Rust binding for the Storj Lib Uplink"
@@ -12,7 +12,7 @@ homepage = "https://storj.io"
 
 
 [dependencies]
-uplink-sys = { path = "../uplink-sys", version = "0.7.0" }
+uplink-sys = { path = "../uplink-sys", version = "0.7.1" }
 
 [dev-dependencies]
 rand = "0.8.5"
