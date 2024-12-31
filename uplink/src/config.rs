@@ -121,7 +121,7 @@ impl<'a> Config<'a> {
     }
 }
 
-impl<'a> Drop for Config<'a> {
+impl Drop for Config<'_> {
     fn drop(&mut self) {
         use std::os::raw::c_char;
 
