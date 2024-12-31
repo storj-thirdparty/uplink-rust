@@ -80,8 +80,10 @@ fn main() {
     );
 
     // Manually link to core and security libs on MacOS
-    #[cfg(target_os = "macos")]
-    {
+    //
+    // N.B.: `CARGO_CFG_TARGET_OS` should be read instead of `cfg(target_os = "macos")`. The latter
+    // detects the host OS that is building the `build.rs` script, not the target OS.
+    if env::var("CARGO_CFG_TARGET_OS").expect("CARGO_CFG_TARGET_OS is not defined") == "macos" {
         println!("cargo:rustc-flags=-l framework=CoreFoundation -l framework=Security");
     }
 
