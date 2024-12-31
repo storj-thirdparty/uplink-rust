@@ -211,8 +211,7 @@ pub enum Uplink {
     /// or aborted.
     UploadDone(String),
 
-    /// Edge service error codes
-
+    // Edge service error codes
     /// An Edge Auth service network or protocol error.
     EdgeAuthDialFailed(String),
     /// An Edge Auth service internal error.
