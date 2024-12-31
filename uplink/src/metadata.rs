@@ -1,6 +1,7 @@
 //! Storj DCS metadata types.
 
 use std::collections::HashMap;
+use std::ffi::c_char;
 use std::ptr;
 use std::time::Duration;
 use std::vec::Vec;
@@ -158,9 +159,9 @@ impl UplinkCustomMetadataWrapper {
         let mut entries = Vec::with_capacity(num_entries);
         for (k, v) in custom.iter() {
             entries.push(ulksys::UplinkCustomMetadataEntry {
-                key: k.as_ptr() as *mut i8,
+                key: k.as_ptr() as *mut c_char,
                 key_length: k.len(),
-                value: v.as_ptr() as *mut i8,
+                value: v.as_ptr() as *mut c_char,
                 value_length: v.len(),
             });
         }
