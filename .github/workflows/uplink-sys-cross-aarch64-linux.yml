@@ -1,0 +1,40 @@
+name: Cross-compile uplink-sys to aarch64 Linux
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - 'uplink-sys/**'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - 'docker-compose.yaml'
+      - 'Makefile'
+  pull_request:
+    branches: ["main"]
+    paths:
+      - 'uplink-sys/**'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - 'docker-compose.yaml'
+      - 'Makefile'
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_BUILD_TARGET: aarch64-unknown-linux-gnu
+      BINDGEN_EXTRA_CLANG_ARGS: "--sysroot=/usr/aarch64-linux-gnu"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up `aarch64-unknown-linux-gnu` Rust target
+        run: rustup target add aarch64-unknown-linux-gnu
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang libclang-dev libc6-dev-arm64-cross && sudo snap install zig --classic --beta
+
+      - name: Build
+        run: make -C uplink-sys build
