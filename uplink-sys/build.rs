@@ -4,7 +4,56 @@ use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 
+/// Converts Rust's architecture name to Go's architecture name.
+fn rust_arch_to_go_arch(rust_arch: &str) -> &str {
+    match rust_arch {
+        "x86" => "386",
+        "x86_64" => "amd64",
+        "arm" => "arm",
+        "aarch64" => "arm64",
+        "riscv32" => "riscv",
+        "riscv64" => "riscv64",
+        "loongarch64" => "loong64",
+        "mips" => "mips",
+        "mipsel" => "mipsle",
+        "mips64" => "mips64",
+        "mips64el" => "mips64le",
+        "powerpc" => "ppc",
+        "powerpc64" => "ppc64",
+        "wasm64" => "wasm",
+        _ => panic!("Unsupported architecture: {rust_arch}"),
+    }
+}
+
+fn rust_os_to_go_os<'a>(rust_arch: &str, rust_os: &'a str) -> &'a str {
+    if rust_arch.starts_with("wasm") {
+        return "js";
+    }
+
+    match rust_os {
+        "macos" => "darwin",
+        _ => rust_os,
+    }
+}
+
 fn main() {
+    // Set the environment variables for `go` compilation, so that cross-compilation works.
+    let host_triple = env::var("HOST").expect("HOST not defined");
+    let target_triple = env::var("TARGET").expect("TARGET not defined");
+    let target_os = env::var("CARGO_CFG_TARGET_OS").expect("CARGO_CFG_TARGET_OS not defined");
+    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH not defined");
+    let go_arch = rust_arch_to_go_arch(&target_arch);
+    let go_os = rust_os_to_go_os(&target_arch, &target_os);
+
+    // If cross-compiling, suggest to the user that they will need to set their sysroot properly.
+    if target_triple != host_triple
+        && !env::var("BINDGEN_EXTRA_CLANG_ARGS")
+            .unwrap_or_default()
+            .contains("sysroot")
+    {
+        panic!("Environment variable `BINDGEN_EXTRA_CLANG_ARGS` should contain `--sysroot=/path/to/target/sysroot` when cross-compiling");
+    }
+
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not defined"));
 
     // Directory containing uplink-c project source
@@ -22,6 +71,8 @@ fn main() {
         // parent tree directory and with the same depth.
         Command::new("make")
             .arg("build")
+            .env("GOOS", go_os)
+            .env("GOARCH", go_arch)
             .current_dir(&uplink_c_src)
             .status()
             .expect("Failed to run make command from build.rs.");
@@ -83,7 +134,7 @@ fn main() {
     //
     // N.B.: `CARGO_CFG_TARGET_OS` should be read instead of `cfg(target_os = "macos")`. The latter
     // detects the host OS that is building the `build.rs` script, not the target OS.
-    if env::var("CARGO_CFG_TARGET_OS").expect("CARGO_CFG_TARGET_OS is not defined") == "macos" {
+    if target_os == "macos" {
         println!("cargo:rustc-flags=-l framework=CoreFoundation -l framework=Security");
     }
 
