@@ -113,20 +113,17 @@ impl Config {
         access: &access::Grant,
         opts: Option<&OptionsRegisterAccess>,
     ) -> Result<credentials::Gateway> {
-        let uc_opts = if let Some(o) = opts {
-            &o.as_ffi_options_register_access() as *const ulksys::EdgeRegisterAccessOptions
-        } else {
-            ptr::null()
-        };
+        // N.B.: Be sure to bind the options to a variable that lives long enough to be passed to
+        // the FFI.
+        let mut uc_opts = opts.map(|o| o.as_ffi_options_register_access());
+        let uc_opts_ptr = uc_opts.as_mut().map_or(ptr::null_mut(), |o| {
+            o as *mut ulksys::EdgeRegisterAccessOptions
+        });
 
         // SAFETY: we trust the FFI is safe creating an instance of its own types and rely in our
         // implemented FFI methods to return valid FFI values with correct lifetimes.
         let uc_res = unsafe {
-            ulksys::edge_register_access(
-                self.inner,
-                access.as_ffi_access(),
-                uc_opts as *mut ulksys::EdgeRegisterAccessOptions,
-            )
+            ulksys::edge_register_access(self.inner, access.as_ffi_access(), uc_opts_ptr)
         };
 
         credentials::Gateway::from_ffi_credentials_result(uc_res)
