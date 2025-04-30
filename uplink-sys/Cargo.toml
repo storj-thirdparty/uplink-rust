@@ -1,6 +1,6 @@
 [package]
 name = "uplink-sys"
-version = "0.7.2"
+version = "0.8.0"
 authors = ["Cameron Fyfe <cameron.j.fyfe@gmail.com>", "utropicmedia"]
 edition = "2021"
 links = "uplink"
@@ -12,7 +12,7 @@ keywords = ["storj", "storage"]
 
 # Contains relevant information of the Uplink c-binding.
 [package.metadata.uplink-c]
-version = "1.9.0" # keep it manually in sync with the git-submodule uplink-c checkout version tag.
+version = "1.10.1" # keep it manually in sync with the git-submodule uplink-c checkout version tag.
 
 [package.metadata.docs.rs]
 default-target = "x86_64-unknown-linux-gnu"
