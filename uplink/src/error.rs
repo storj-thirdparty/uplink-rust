@@ -126,8 +126,8 @@ pub struct Args {
     /// * When the parameter is a list (vector, array, etc.), the invalid items can be
     ///   __optionally__ indicated using square brackets (e.g. `l[3,5,7]`).
     /// * when the parameter is struct, the invalid fields or method return return values can be
-    ///    __optionally__ indicated using curly brackets (e.g invalid field: `person{name}`, invalid
-    ///    method return value: `person{full_name()}`, invalid fields/methods:
+    ///   __optionally__ indicated using curly brackets (e.g invalid field: `person{name}`, invalid
+    ///   method return value: `person{full_name()}`, invalid fields/methods:
     ///   `employee{name, position()}`).
     /// * When several parameters are invalid, its values is the parameters names wrapped in round
     ///   brackets (e.g. `(p1,p3)`); it also accepts any above combination of parameters types
