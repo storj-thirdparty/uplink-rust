@@ -27,7 +27,8 @@ clean: integration-tests-env-down
 
 .PHONY: integration-tests-env-up
 integration-tests-env-up: .tmp/up/docker-compose.yaml
-	cd .tmp/up; docker compose up -d
+	cd .tmp/up; docker compose up -d --wait --wait-timeout 120 \
+		|| { echo "Docker compose services failed to start."; docker compose down; exit 1; }
 	$(MAKE) .tmp/env
 
 .PHONY: integration-tests-env-down
