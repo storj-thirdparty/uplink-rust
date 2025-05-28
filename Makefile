@@ -55,6 +55,6 @@ integration-tests-env-down:
 .tmp/up:
 	mkdir -p .tmp
 	cd .tmp; git clone https://github.com/storj/up.git
-	cd .tmp/up; git checkout v1.2.7
+	cd .tmp/up; git checkout v1.2.10
 
 .tmp/up/docker-compose.yaml: .tmp/up/storj-up
