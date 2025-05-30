@@ -119,8 +119,7 @@ impl std::io::Write for Upload {
         // `write` that the caller should to write the rest of the bytes, we return the error
         // returned on the previous call.
         if !self.inner.error.is_null() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            return Err(std::io::Error::other(
                 Error::new_uplink(self.inner.error)
                     .expect("BUG: missing a non NULL verification previous to this call"),
             ));
@@ -145,8 +144,7 @@ impl std::io::Write for Upload {
             // There is an error and the operation didn't upload any byte, so we return the error
             // directly.
             if uc_res.bytes_written == 0 {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
+                return Err(std::io::Error::other(
                     Error::new_uplink(uc_res.error)
                         .expect("BUG: missing a non NULL verification previous to this call"),
                 ));
@@ -482,8 +480,7 @@ impl std::io::Write for PartUpload {
         // `write` that the caller should to write the rest of the bytes, we return the error
         // returned on the previous call.
         if !self.inner.error.is_null() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            return Err(std::io::Error::other(
                 Error::new_uplink(self.inner.error)
                     .expect("BUG: missing a non NULL verification previous to this call"),
             ));
@@ -508,8 +505,7 @@ impl std::io::Write for PartUpload {
             // There is an error and the operation didn't upload any byte, so we return the error
             // directly.
             if uc_res.bytes_written == 0 {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
+                return Err(std::io::Error::other(
                     Error::new_uplink(uc_res.error)
                         .expect("BUG: missing a non NULL verification previous to this call"),
                 ));

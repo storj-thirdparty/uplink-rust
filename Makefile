@@ -27,7 +27,8 @@ clean: integration-tests-env-down
 
 .PHONY: integration-tests-env-up
 integration-tests-env-up: .tmp/up/docker-compose.yaml
-	cd .tmp/up; docker compose up -d
+	cd .tmp/up; docker compose up -d --wait --wait-timeout 120 \
+		|| { echo "Docker compose services failed to start."; docker compose down; exit 1; }
 	$(MAKE) .tmp/env
 
 .PHONY: integration-tests-env-down
@@ -54,6 +55,6 @@ integration-tests-env-down:
 .tmp/up:
 	mkdir -p .tmp
 	cd .tmp; git clone https://github.com/storj/up.git
-	cd .tmp/up; git checkout v1.2.7
+	cd .tmp/up; git checkout v1.2.10
 
 .tmp/up/docker-compose.yaml: .tmp/up/storj-up

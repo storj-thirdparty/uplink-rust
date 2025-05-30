@@ -257,7 +257,7 @@ impl std::io::Read for Download {
                 }
 
                 use std::io::{Error as IOErr, ErrorKind};
-                return Err(IOErr::new(ErrorKind::Other, err));
+                return Err(IOErr::other(err));
             }
 
             if read_res.bytes_read != 0 {
