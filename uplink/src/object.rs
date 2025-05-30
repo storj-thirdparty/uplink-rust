@@ -256,7 +256,7 @@ impl std::io::Read for Download {
                     return Ok(read_res.bytes_read as usize);
                 }
 
-                use std::io::{Error as IOErr, ErrorKind};
+                use std::io::Error as IOErr;
                 return Err(IOErr::other(err));
             }
 
