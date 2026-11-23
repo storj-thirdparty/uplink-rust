@@ -103,12 +103,16 @@ impl Grant {
     fn from_ffi_access_result(ffi_result: ulksys::UplinkAccessResult) -> Result<Self> {
         ffi_result.ensure();
 
-        Error::new_uplink(ffi_result.error).map_or(Ok(Grant { inner: ffi_result }), |err| {
+        // NOTE: `Grant` must only be instantiated when there isn't an error because it frees
+        // `ffi_result` when it's dropped.
+        if let Some(err) = Error::new_uplink(ffi_result.error) {
             // SAFETY: FFI free function doesn't free if the result fields are `NULL` and this
             // result should only be instantiated through the same FFI.
             unsafe { ulksys::uplink_free_access_result(ffi_result) };
-            Err(err)
-        })
+            return Err(err);
+        }
+
+        Ok(Grant { inner: ffi_result })
     }
 
     /// Overrides the root encryption key for the prefix in bucket with the encryption key.
@@ -451,6 +455,35 @@ mod test {
             );
         } else {
             panic!("expected an invalid argument error");
+        }
+    }
+
+    #[test]
+    fn test_grant_new_invalid_access() {
+        // Several iterations because a double free isn't always detected on the first one.
+        for _ in 0..10 {
+            match Grant::new("invalid").expect_err("when passing an invalid access grant") {
+                Error::Uplink(error::Uplink::Internal(_)) => {}
+                err => panic!("expected an Uplink internal error, got: {err:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_grant_share_invalid_permission() {
+        // This access grant is invalidated so it isn't leaking any valid access grant.
+        let grant = Grant::new("15kvZYL7aMhTXFU6vne8iedGfvvZdcbaDLAZ9SiN1yChpAYupdDw3SMfyHqA7pETdFjhe8SnjLox4tnq5hYbZWfCm443kv3fWV8ZWNkKwaq1mbrmyz3pPd1WSxiJn2g5tYKWoPpzvG1ygjDaB4yEq9zdpYSaH5DiVHrbaWmq6mCwRrnEF1ANdVcA2gXNbFpmSKp2i59fA14RRdZYVTrvY6rWKyG35p35eenp3ePyjwoXNSe9Cs8KvMRteVcozNiMwwuYCm4ExwP8os5Eqydqwjpx8ic8hnirkn7ThBbLLAtJBLtu").expect("valid serialized access grant");
+
+        // Several iterations because a double free isn't always detected on the first one.
+        for _ in 0..10 {
+            // The permission doesn't allow any operation.
+            match grant
+                .share(&Permission::new(), None)
+                .expect_err("when sharing with an empty permission")
+            {
+                Error::Uplink(error::Uplink::Internal(_)) => {}
+                err => panic!("expected an Uplink internal error, got: {err:?}"),
+            }
         }
     }
 
