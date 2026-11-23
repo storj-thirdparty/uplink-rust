@@ -14,7 +14,7 @@ mod common;
 fn integration_bucket_operations() {
     let env = common::Environment::load();
     let grant_root = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(&grant_root);
+    let project = &mut Project::open(&grant_root).expect("open project");
 
     let bucket_name = common::generate_name("bucket-ops");
 

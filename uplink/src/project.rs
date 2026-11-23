@@ -26,26 +26,41 @@ pub struct Project {
 
 impl Project {
     /// Opens a project with the specified access grant.
-    pub fn open(grant: &Grant) -> Self {
+    ///
+    /// It returns an [`crate::Error::Uplink`] error if the FFI cannot open the project.
+    pub fn open(grant: &Grant) -> Result<Self> {
         // SAFETY: we trust the FFI is behaving correctly when called with correct value.
         // The `grant.as_ffi_access` return a pointer to its FFI representation that only lives as
         // long as `grant` but we don't need to take ownership of `grant` because the FFI access is
         // only a handler, not the actual access value, so `grant` can be dropped without affecting
         // the FFI project instance.
-        let inner = unsafe { Guard::new(ulksys::uplink_open_project(grant.as_ffi_access())) };
-        Self { inner }
+        let res = unsafe { Guard::new(ulksys::uplink_open_project(grant.as_ffi_access())) };
+        Self::from_ffi_project_result(res)
     }
 
     /// Opens a project with the specified access grant and configuration.
-    pub fn open_with_config(grant: Grant, config: &Config) -> Self {
+    ///
+    /// It returns an [`crate::Error::Uplink`] error if the FFI cannot open the project, for example
+    /// when the user agent of `config` isn't valid.
+    pub fn open_with_config(grant: Grant, config: &Config) -> Result<Self> {
         // SAFETY: we trust the FFI is behaving correctly when called with correct value.
-        let inner = unsafe {
+        let res = unsafe {
             Guard::new(ulksys::uplink_config_open_project(
                 config.as_ffi_config(),
                 grant.as_ffi_access(),
             ))
         };
-        Self { inner }
+        Self::from_ffi_project_result(res)
+    }
+
+    /// Creates a new instance from the FFI representation for a project's result.
+    ///
+    /// It returns an error if `uc_result` contains a non `NULL` pointer in the `error` field.
+    fn from_ffi_project_result(uc_result: Guard<ulksys::UplinkProjectResult>) -> Result<Self> {
+        uc_result.ensure();
+        uc_result.check()?;
+
+        Ok(Self { inner: uc_result })
     }
 
     /// Aborts a multipart upload started with [`Self::begin_upload`].
@@ -663,6 +678,11 @@ mod test {
 
     use crate::guard::test::{c_box, c_error, c_string};
 
+    use std::time::Duration;
+
+    // This access grant is invalidated so it isn't leaking any valid access grant.
+    const ACCESS_GRANT: &str = "15kvZYL7aMhTXFU6vne8iedGfvvZdcbaDLAZ9SiN1yChpAYupdDw3SMfyHqA7pETdFjhe8SnjLox4tnq5hYbZWfCm443kv3fWV8ZWNkKwaq1mbrmyz3pPd1WSxiJn2g5tYKWoPpzvG1ygjDaB4yEq9zdpYSaH5DiVHrbaWmq6mCwRrnEF1ANdVcA2gXNbFpmSKp2i59fA14RRdZYVTrvY6rWKyG35p35eenp3ePyjwoXNSe9Cs8KvMRteVcozNiMwwuYCm4ExwP8os5Eqydqwjpx8ic8hnirkn7ThBbLLAtJBLtu";
+
     /// Calls the function under test with a result that has a bucket or not, and an error with
     /// `code` or not.
     fn created_bucket(has_bucket: bool, code: Option<u32>) -> Result<(Bucket, bool)> {
@@ -706,5 +726,33 @@ mod test {
             matches!(err, Error::Uplink(error::Uplink::PermissionDenied(_))),
             "unexpected error: {err:?}"
         );
+    }
+
+    // Opening a project doesn't establish any connection.
+    #[test]
+    fn test_open() {
+        let grant = Grant::new(ACCESS_GRANT).expect("valid serialized access grant");
+        Project::open(&grant).expect("open project");
+    }
+
+    #[test]
+    fn test_open_with_config() {
+        let timeout = Duration::from_secs(1);
+        {
+            // OK case.
+            let grant = Grant::new(ACCESS_GRANT).expect("valid serialized access grant");
+            let config = Config::new("rust-uplink", timeout, None).expect("valid config");
+            Project::open_with_config(grant, &config).expect("open project");
+        }
+        {
+            // Error case: invalid user agent.
+            let grant = Grant::new(ACCESS_GRANT).expect("valid serialized access grant");
+            let config = Config::new("(invalid", timeout, None).expect("valid config");
+            match Project::open_with_config(grant, &config) {
+                Err(Error::Uplink(error::Uplink::Internal(_))) => {}
+                Err(err) => panic!("expected an Uplink internal error, got: {err:?}"),
+                Ok(_) => panic!("expected an error when the user agent is invalid"),
+            }
+        }
     }
 }

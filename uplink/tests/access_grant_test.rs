@@ -43,7 +43,7 @@ fn integration_grant_override_encryption_key() {
     let grant_root = Grant::new(&env.access_grant).expect("access grant parsing");
 
     // Create bucket for user.
-    let project = &mut Project::open(&grant_root);
+    let project = &mut Project::open(&grant_root).expect("open project");
     let bucket_name = common::generate_name("multitenant");
     let (_bucket, _ok) = project.create_bucket(&bucket_name).expect("create bucket");
 
@@ -66,7 +66,7 @@ fn integration_grant_override_encryption_key() {
 
     {
         // Upload an object with the user's grant.
-        let proj = &mut Project::open(&grant_user);
+        let proj = &mut Project::open(&grant_user).expect("open project");
         let object_key = "overridden-encryption-key-data.txt";
         let upload = &mut proj
             .upload_object(&bucket_name, object_key, None)
@@ -78,7 +78,7 @@ fn integration_grant_override_encryption_key() {
         upload.commit().expect("upload object commit");
 
         // Download the object with the root grant should fail.
-        let proj = &mut Project::open(&grant_root);
+        let proj = &mut Project::open(&grant_root).expect("open project");
         proj.download_object(&bucket_name, object_key, None)
             .expect_err("when tyring to download user's object with the root access grant");
     }
@@ -92,7 +92,7 @@ fn integration_grant_override_encryption_key() {
 fn integration_grant_share() {
     let env = common::Environment::load();
     let grant_root = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(&grant_root);
+    let project = &mut Project::open(&grant_root).expect("open project");
 
     // Create buckets.
     let bucket1_name = common::generate_name("grant-share-1");
@@ -139,7 +139,7 @@ fn integration_grant_share() {
             .expect("shared grant");
 
         // Listing buckets with this restricted access grant.
-        let proj_restricted = &mut Project::open(&grant);
+        let proj_restricted = &mut Project::open(&grant).expect("open project");
         let it = proj_restricted.list_buckets(None);
         assert_eq!(
             1,
@@ -237,7 +237,7 @@ fn integration_grant_share() {
             .share(&perm, Some(vec![share_prefix_upload]))
             .expect("shared grant");
 
-        let proj_upload = &mut Project::open(&grant_upload);
+        let proj_upload = &mut Project::open(&grant_upload).expect("open project");
         let object_key = "/pair/data.txt";
         let upload = &mut proj_upload
             .upload_object(&bucket1_name, object_key, None)
@@ -286,7 +286,7 @@ fn integration_grant_share() {
             )
             .expect("shared grant");
 
-        let proj_download = &mut Project::open(&grant_download);
+        let proj_download = &mut Project::open(&grant_download).expect("open project");
         let download = &mut proj_download
             .download_object(&bucket1_name, object_key, None)
             .expect("download object");
@@ -383,7 +383,7 @@ fn integration_grant_share() {
         .expect("setting not before to sharing permissions");
         let grant = grant_root.share(&perm, None).expect("shared grant");
 
-        let project = &mut Project::open(&grant);
+        let project = &mut Project::open(&grant).expect("open project");
         let it = project.list_buckets(None);
         match it.collect::<UlResult<Vec<Bucket>>>().expect_err("listing buckets with a grant that cannot be used before a future date") {
             Error::Uplink(error::Uplink::PermissionDenied(_)) => {}
