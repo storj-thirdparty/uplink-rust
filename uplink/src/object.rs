@@ -6,7 +6,7 @@ pub use upload::Upload;
 
 use crate::error::BoxError;
 use crate::uplink_c::Ensurer;
-use crate::{error, metadata, Error, Result};
+use crate::{error, helpers, metadata, Error, Result};
 
 use std::ffi::{CStr, CString};
 
@@ -157,7 +157,7 @@ impl std::iter::Iterator for Iterator {
         unsafe {
             if !ulksys::uplink_object_iterator_next(self.inner) {
                 let uc_error = ulksys::uplink_object_iterator_err(self.inner);
-                return Error::new_uplink(uc_error).map(Err);
+                return Error::from_ffi_error(uc_error).map(Err);
             }
 
             Some(
@@ -216,11 +216,8 @@ impl Download {
         // SAFETY: We trust the FFI is behaving correctly when passing a valid `UplinkDownload`
         // instance.
         let obj_res = unsafe { ulksys::uplink_download_info(self.inner.download) };
-        if let Some(err) = Error::new_uplink(obj_res.error) {
-            return Err(err);
-        }
 
-        Object::from_ffi_object(obj_res.object)
+        Object::from_ffi_object_result(obj_res)
             .map(|op| op.expect("successful download object info must always return an object"))
     }
 }
@@ -242,7 +239,7 @@ impl std::io::Read for Download {
             let read_res =
                 unsafe { ulksys::uplink_download_read(self.inner.download, bp.cast(), buf.len()) };
 
-            if let Some(err) = Error::new_uplink(read_res.error) {
+            if let Some(err) = Error::from_ffi_error(read_res.error) {
                 // According to the Uplink C bindings version that we are targeting v1.7.0 all the
                 // errors are mapped to an specific exported code, except EOF, see
                 // https://github.com/storj/uplink-c/blob/v1.7.0/error.go#L37
@@ -276,7 +273,7 @@ impl Drop for Download {
         unsafe {
             // At this point we cannot do anything about the error, so discarded.
             // TODO(https://github.com/storj-thirdparty/uplink-rust/issues/51).
-            let _ = ulksys::uplink_close_download(self.inner.download);
+            helpers::drop_uplink_sys_error(ulksys::uplink_close_download(self.inner.download));
             ulksys::uplink_free_download_result(self.inner);
         }
     }

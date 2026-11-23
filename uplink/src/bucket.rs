@@ -115,7 +115,7 @@ impl std::iter::Iterator for Iterator {
         unsafe {
             if !ulksys::uplink_bucket_iterator_next(self.inner) {
                 let uc_error = ulksys::uplink_bucket_iterator_err(self.inner);
-                return Error::new_uplink(uc_error).map(Err);
+                return Error::from_ffi_error(uc_error).map(Err);
             }
 
             Some(Bucket::from_ffi_bucket(

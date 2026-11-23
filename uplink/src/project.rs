@@ -642,7 +642,7 @@ impl Drop for Project {
         unsafe {
             // At this point we cannot do anything about the error, so discarded.
             // TODO(https://github.com/storj-thirdparty/uplink-rust/issues/51).
-            let _ = ulksys::uplink_close_project(self.inner.project);
+            helpers::drop_uplink_sys_error(ulksys::uplink_close_project(self.inner.project));
             ulksys::uplink_free_project_result(self.inner);
         }
     }

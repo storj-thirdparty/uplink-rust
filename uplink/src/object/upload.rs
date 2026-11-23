@@ -49,7 +49,7 @@ impl Upload {
     pub fn abort(&mut self) -> Result<()> {
         // SAFETY: we trust the FFI when dealing with a correct instance.
         let err = unsafe { ulksys::uplink_upload_abort(self.inner.upload) };
-        if let Some(err) = Error::new_uplink(err) {
+        if let Some(err) = Error::from_ffi_error(err) {
             Err(err)
         } else {
             Ok(())
@@ -64,7 +64,7 @@ impl Upload {
     pub fn commit(&mut self) -> Result<()> {
         // SAFETY: we trust the FFI when dealing with a correct instance.
         let err = unsafe { ulksys::uplink_upload_commit(self.inner.upload) };
-        if let Some(err) = Error::new_uplink(err) {
+        if let Some(err) = Error::from_ffi_error(err) {
             Err(err)
         } else {
             Ok(())
@@ -92,7 +92,7 @@ impl Upload {
                 metadata.to_ffi_custom_metadata(),
             )
         };
-        if let Some(err) = Error::new_uplink(err) {
+        if let Some(err) = Error::from_ffi_error(err) {
             Err(err)
         } else {
             Ok(())
@@ -145,7 +145,7 @@ impl std::io::Write for Upload {
             // directly.
             if uc_res.bytes_written == 0 {
                 return Err(std::io::Error::other(
-                    Error::new_uplink(uc_res.error)
+                    Error::from_ffi_error(uc_res.error)
                         .expect("BUG: missing a non NULL verification previous to this call"),
                 ));
             }
@@ -191,7 +191,7 @@ impl std::iter::Iterator for Iterator {
         unsafe {
             if !ulksys::uplink_upload_iterator_next(self.inner) {
                 let uc_error = ulksys::uplink_upload_iterator_err(self.inner);
-                return Error::new_uplink(uc_error).map(Err);
+                return Error::from_ffi_error(uc_error).map(Err);
             }
 
             Some(Ok(Info::from_ffi_upload_info(
@@ -399,7 +399,7 @@ impl PartUpload {
     pub fn abort(&mut self) -> Result<()> {
         // SAFETY: we trust the FFI when dealing with a correct instance.
         let err = unsafe { ulksys::uplink_part_upload_abort(self.inner.part_upload) };
-        if let Some(err) = Error::new_uplink(err) {
+        if let Some(err) = Error::from_ffi_error(err) {
             Err(err)
         } else {
             Ok(())
@@ -414,7 +414,7 @@ impl PartUpload {
     pub fn commit(&mut self) -> Result<()> {
         // SAFETY: we trust the FFI when dealing with a correct instance.
         let err = unsafe { ulksys::uplink_part_upload_commit(self.inner.part_upload) };
-        if let Some(err) = Error::new_uplink(err) {
+        if let Some(err) = Error::from_ffi_error(err) {
             Err(err)
         } else {
             Ok(())
@@ -458,7 +458,7 @@ impl PartUpload {
             )
         };
 
-        if let Some(err) = Error::new_uplink(err) {
+        if let Some(err) = Error::from_ffi_error(err) {
             Err(err)
         } else {
             Ok(())
@@ -506,7 +506,7 @@ impl std::io::Write for PartUpload {
             // directly.
             if uc_res.bytes_written == 0 {
                 return Err(std::io::Error::other(
-                    Error::new_uplink(uc_res.error)
+                    Error::from_ffi_error(uc_res.error)
                         .expect("BUG: missing a non NULL verification previous to this call"),
                 ));
             }
@@ -557,7 +557,7 @@ impl std::iter::Iterator for PartIterator {
         unsafe {
             if !ulksys::uplink_part_iterator_next(self.inner) {
                 let uc_error = ulksys::uplink_part_iterator_err(self.inner);
-                return Error::new_uplink(uc_error).map(Err);
+                return Error::from_ffi_error(uc_error).map(Err);
             }
 
             Some(Ok(Part::from_ffi_part(ulksys::uplink_part_iterator_item(
