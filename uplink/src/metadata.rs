@@ -43,9 +43,8 @@ impl Custom {
     /// Creates a custom metadata instance from type exposed by the FFI.
     ///
     /// NOTE this method assumes `uc_custom` only contains key-value pairs that have valid UTF-8
-    /// bytes. In the case that it doesn't then the mapped key-value may not have the same value in
-    /// that byte position and it isn't either guarantee that the same invalid UTF-8 byte produces
-    /// the same mapped value.
+    /// bytes. In the case that it doesn't then the invalid bytes are mapped to the Unicode
+    /// replacement character (U+FFFD).
     pub(crate) fn with_ffi_custom_metadata(uc_custom: &ulksys::UplinkCustomMetadata) -> Self {
         if uc_custom.count == 0 {
             return Default::default();
@@ -425,6 +424,20 @@ mod test {
     }
 
     use crate::helpers::test::{assert_c_string, compare_c_string};
+
+    #[test]
+    fn test_custom_with_ffi_custom_metadata_non_ascii() {
+        let mut to = Custom::with_capacity(1);
+        to.insert(String::from("cl\u{e9}"), String::from("\u{4e16}\u{1f980}"));
+        let from = Custom::with_ffi_custom_metadata(&to.to_ffi_custom_metadata());
+
+        assert_eq!(from.count(), 1, "count");
+        assert_eq!(
+            from.get("cl\u{e9}").map(String::as_str),
+            Some("\u{4e16}\u{1f980}"),
+            "get"
+        );
+    }
 
     #[test]
     fn test_custom_with_ffi_custom_metadata() {
