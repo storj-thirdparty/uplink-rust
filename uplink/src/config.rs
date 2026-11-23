@@ -53,7 +53,7 @@ impl<'a> Config<'a> {
 
             inner = ulksys::UplinkConfig {
                 user_agent: uagent.into_raw(),
-                dial_timeout_milliseconds: dial_timeout.as_millis() as i32,
+                dial_timeout_milliseconds: ffi_dial_timeout(dial_timeout),
                 temp_directory: tdir.into_raw(),
             };
         }
@@ -78,7 +78,7 @@ impl<'a> Config<'a> {
                 .expect("BUG: hard-coded temp_dir string must never contains  null bytes (0 byte)");
             inner = ulksys::UplinkConfig {
                 user_agent: uagent.into_raw(),
-                dial_timeout_milliseconds: dial_timeout.as_millis() as i32,
+                dial_timeout_milliseconds: ffi_dial_timeout(dial_timeout),
                 temp_directory: temp_dir.into_raw(),
             };
         }
@@ -119,6 +119,14 @@ impl<'a> Config<'a> {
     pub(crate) fn as_ffi_config(&self) -> ulksys::UplinkConfig {
         self.inner
     }
+}
+
+/// Returns the FFI representation of a dial timeout, which is in milliseconds.
+///
+/// The timeouts that are larger than the maximum that the FFI can represent are set to the maximum
+/// because otherwise they'd wrap around to a shorter or a negative one.
+fn ffi_dial_timeout(timeout: Duration) -> i32 {
+    i32::try_from(timeout.as_millis()).unwrap_or(i32::MAX)
 }
 
 impl Drop for Config<'_> {
@@ -276,6 +284,30 @@ mod test {
             Duration::new(1, 635578),
             "dial_timeout"
         );
+    }
+
+    #[test]
+    fn test_dial_timeout_overflow() {
+        // 2^32 + 1 milliseconds wraps around to 1 millisecond.
+        for timeout in [Duration::from_millis((1 << 32) + 1), Duration::MAX] {
+            let config = Config::new("rust-uplink", timeout, None)
+                .expect("new shouldn't fail when 'user agent' doesn't contain any null character");
+            assert_eq!(config.dial_timeout(), timeout, "dial_timeout");
+            assert_eq!(
+                config.inner.dial_timeout_milliseconds,
+                i32::MAX,
+                "inner.dial_timeout_milliseconds"
+            );
+
+            let config = Config::new_inmemory("rust-uplink", timeout)
+                .expect("new shouldn't fail when 'user agent' doesn't contain any null character");
+            assert_eq!(config.dial_timeout(), timeout, "dial_timeout");
+            assert_eq!(
+                config.inner.dial_timeout_milliseconds,
+                i32::MAX,
+                "inner.dial_timeout_milliseconds"
+            );
+        }
     }
 
     #[test]
