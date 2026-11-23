@@ -197,6 +197,10 @@ impl Project {
     ///
     /// It returns the bucket information and `true` when it's created or `false` if it already
     /// existed.
+    ///
+    /// It returns an [`crate::Error::Uplink`] error with
+    /// [`crate::error::Uplink::BucketAlreadyExists`] variant if the bucket already existed but its
+    /// information cannot be retrieved (e.g. the access grant doesn't have enough permissions).
     pub fn create_bucket(&self, bucket: &str) -> Result<(Bucket, bool)> {
         let c_bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
 
@@ -204,24 +208,35 @@ impl Project {
         let uc_res = unsafe {
             ulksys::uplink_create_bucket(self.inner.project, c_bucket.as_ptr() as *mut c_char)
         };
+
+        Self::created_bucket_from_ffi_bucket_result(uc_res)
+    }
+
+    /// Returns the bucket and if it was created from the FFI result of creating a bucket.
+    fn created_bucket_from_ffi_bucket_result(
+        uc_res: ulksys::UplinkBucketResult,
+    ) -> Result<(Bucket, bool)> {
         uc_res.ensure();
 
-        let created = if let Some(err) = Error::new_uplink(uc_res.error) {
-            if let Error::Uplink(error::Uplink::BucketAlreadyExists(_)) = &err {
-                false
-            } else {
-                // SAFETY: the `Error` constructor doesn't take ownership of the FFI error pointer
-                // so it's still allocated at this point and we trust the FFI of freeing memory of
-                // pointers allocated by itself.
-                unsafe { ulksys::uplink_free_bucket_result(uc_res) };
-                return Err(err);
-            }
-        } else {
-            true
+        let Some(err) = Error::new_uplink(uc_res.error) else {
+            return Ok((Bucket::from_ffi_bucket(uc_res.bucket)?, true));
         };
 
-        let bucket = Bucket::from_ffi_bucket(uc_res.bucket)?;
-        Ok((bucket, created))
+        // When the bucket already exists, the FFI returns an error and also the bucket, unless that
+        // it cannot retrieve it, for example, because the access grant doesn't have permissions to
+        // read the bucket's information.
+        let already_exists = matches!(&err, Error::Uplink(error::Uplink::BucketAlreadyExists(_)));
+        if !already_exists || uc_res.bucket.is_null() {
+            // SAFETY: the `Error` constructor doesn't take ownership of the FFI error pointer
+            // so it's still allocated at this point and we trust the FFI of freeing memory of
+            // pointers allocated by itself.
+            unsafe { ulksys::uplink_free_bucket_result(uc_res) };
+            return Err(err);
+        }
+
+        // `Bucket::from_ffi_bucket` only takes ownership of the `bucket` field.
+        helpers::drop_uplink_sys_error(uc_res.error);
+        Ok((Bucket::from_ffi_bucket(uc_res.bucket)?, false))
     }
 
     /// Deletes a bucket.
@@ -644,6 +659,102 @@ impl Drop for Project {
             // TODO(https://github.com/storj-thirdparty/uplink-rust/issues/51).
             let _ = ulksys::uplink_close_project(self.inner.project);
             ulksys::uplink_free_project_result(self.inner);
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    // The FFI frees its values with the C allocator, so the values that the tests create must be
+    // allocated with it.
+    extern "C" {
+        fn calloc(nitems: usize, size: usize) -> *mut std::ffi::c_void;
+        fn strdup(s: *const c_char) -> *mut c_char;
+    }
+
+    /// Returns a pointer to a copy of `val` allocated with the C allocator.
+    fn c_box<T>(val: T) -> *mut T {
+        // SAFETY: there are no preconditions to call this C function and the returned pointer, when
+        // it isn't `NULL`, has enough room for the value.
+        unsafe {
+            let ptr = calloc(1, std::mem::size_of::<T>()).cast::<T>();
+            assert!(!ptr.is_null(), "C allocation failed");
+            ptr.write(val);
+            ptr
+        }
+    }
+
+    /// Returns a copy of `val` allocated with the C allocator.
+    fn c_string(val: &std::ffi::CStr) -> *mut c_char {
+        // SAFETY: `val` is a valid C string.
+        let ptr = unsafe { strdup(val.as_ptr()) };
+        assert!(!ptr.is_null(), "C allocation failed");
+        ptr
+    }
+
+    fn ffi_bucket() -> *mut ulksys::UplinkBucket {
+        c_box(ulksys::UplinkBucket {
+            name: c_string(c"a-bucket"),
+            created: 10,
+        })
+    }
+
+    fn ffi_error(code: u32) -> *mut ulksys::UplinkError {
+        c_box(ulksys::UplinkError {
+            code: code as i32,
+            message: c_string(c"a message"),
+        })
+    }
+
+    #[test]
+    fn test_created_bucket_from_ffi_bucket_result() {
+        {
+            // The bucket is created.
+            let (bucket, created) =
+                Project::created_bucket_from_ffi_bucket_result(ulksys::UplinkBucketResult {
+                    bucket: ffi_bucket(),
+                    error: ptr::null_mut(),
+                })
+                .expect("bucket created");
+            assert_eq!(bucket.name, "a-bucket", "bucket name");
+            assert!(created, "created");
+        }
+        {
+            // The bucket already exists.
+            let (bucket, created) =
+                Project::created_bucket_from_ffi_bucket_result(ulksys::UplinkBucketResult {
+                    bucket: ffi_bucket(),
+                    error: ffi_error(ulksys::UPLINK_ERROR_BUCKET_ALREADY_EXISTS),
+                })
+                .expect("bucket already exists");
+            assert_eq!(bucket.name, "a-bucket", "bucket name");
+            assert!(!created, "created");
+        }
+        {
+            // The bucket already exists but its information cannot be retrieved.
+            let err = Project::created_bucket_from_ffi_bucket_result(ulksys::UplinkBucketResult {
+                bucket: ptr::null_mut(),
+                error: ffi_error(ulksys::UPLINK_ERROR_BUCKET_ALREADY_EXISTS),
+            })
+            .expect_err("bucket already exists without information");
+            assert!(
+                matches!(err, Error::Uplink(error::Uplink::BucketAlreadyExists(_))),
+                "unexpected error: {err:?}"
+            );
+        }
+        {
+            // Other error.
+            let err = Project::created_bucket_from_ffi_bucket_result(ulksys::UplinkBucketResult {
+                bucket: ptr::null_mut(),
+                error: ffi_error(ulksys::UPLINK_ERROR_PERMISSION_DENIED),
+            })
+            .expect_err("permission denied");
+            assert!(
+                matches!(err, Error::Uplink(error::Uplink::PermissionDenied(_))),
+                "unexpected error: {err:?}"
+            );
         }
     }
 }
