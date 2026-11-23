@@ -234,11 +234,15 @@ impl Info {
         upload.ensure();
 
         let is_prefix = upload.is_prefix;
+        let metadata_system = metadata::System::with_ffi_system_metadata(&upload.system);
+        let metadata_custom = metadata::Custom::with_ffi_custom_metadata(&upload.custom);
         let upload_id;
         let key;
         // SAFETY: We have guarantee that upload fields aren't null through the `ensure` method
         // call of the `Ensurer` trait. We make a copy of the C string pointers to Rust strings,
         // and we free the memory of the C strings to not leak memory.
+        // The custom metadata must have been copied before freeing because `upload` is a shallow
+        // copy, so it points to the memory that is freed.
         unsafe {
             upload_id = CStr::from_ptr(upload.upload_id)
                 .to_str()
@@ -258,8 +262,8 @@ impl Info {
             upload_id,
             key,
             is_prefix,
-            metadata_system: metadata::System::with_ffi_system_metadata(&upload.system),
-            metadata_custom: metadata::Custom::with_ffi_custom_metadata(&upload.custom),
+            metadata_system,
+            metadata_custom,
         }
     }
 
@@ -571,5 +575,96 @@ impl Drop for PartIterator {
     fn drop(&mut self) {
         // SAFETY: we trust the FFI is safe freeing the memory of a correct pointer.
         unsafe { ulksys::uplink_free_part_iterator(self.inner) };
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use std::os::raw::c_char;
+
+    // The FFI frees its values with the C allocator, so the values that the tests create must be
+    // allocated with it.
+    extern "C" {
+        fn calloc(nitems: usize, size: usize) -> *mut std::ffi::c_void;
+        fn strdup(s: *const c_char) -> *mut c_char;
+    }
+
+    /// Returns a copy of `val` allocated with the C allocator.
+    fn c_string(val: &str) -> *mut c_char {
+        let val = CString::new(val).expect("a string without NULL bytes");
+        // SAFETY: `val` is a valid C string.
+        let ptr = unsafe { strdup(val.as_ptr()) };
+        assert!(!ptr.is_null(), "C allocation failed");
+        ptr
+    }
+
+    /// Returns `count` zeroed values of type `T` allocated with the C allocator.
+    fn c_alloc<T>(count: usize) -> *mut T {
+        // SAFETY: there are no preconditions to call this C function.
+        let ptr = unsafe { calloc(count, std::mem::size_of::<T>()) };
+        assert!(!ptr.is_null(), "C allocation failed");
+        ptr.cast()
+    }
+
+    #[test]
+    fn test_info_from_ffi_upload_info() {
+        let entries = c_alloc::<ulksys::UplinkCustomMetadataEntry>(2);
+        let uc_upload = c_alloc::<ulksys::UplinkUploadInfo>(1);
+        // SAFETY: the pointers have just been allocated with enough room for the values.
+        unsafe {
+            for (i, (key, value)) in [("key-a", "val-a"), ("key-b", "val-b")].iter().enumerate() {
+                entries.add(i).write(ulksys::UplinkCustomMetadataEntry {
+                    key: c_string(key),
+                    key_length: key.len(),
+                    value: c_string(value),
+                    value_length: value.len(),
+                });
+            }
+
+            uc_upload.write(ulksys::UplinkUploadInfo {
+                upload_id: c_string("upload-id"),
+                key: c_string("object-key"),
+                is_prefix: false,
+                system: ulksys::UplinkSystemMetadata {
+                    created: 10,
+                    expires: 20,
+                    content_length: 30,
+                },
+                custom: ulksys::UplinkCustomMetadata { entries, count: 2 },
+            });
+        }
+
+        let info = Info::from_ffi_upload_info(uc_upload);
+
+        assert_eq!(info.upload_id, "upload-id", "upload ID");
+        assert_eq!(info.key, "object-key", "key");
+        assert!(!info.is_prefix, "is prefix");
+        assert_eq!(
+            info.metadata_system.created,
+            time::Duration::from_secs(10),
+            "system metadata: created"
+        );
+        assert_eq!(
+            info.metadata_system.expires,
+            Some(time::Duration::from_secs(20)),
+            "system metadata: expires"
+        );
+        assert_eq!(
+            info.metadata_system.content_length, 30,
+            "system metadata: content length"
+        );
+        assert_eq!(info.metadata_custom.count(), 2, "custom metadata: count");
+        assert_eq!(
+            info.metadata_custom.get("key-a").map(String::as_str),
+            Some("val-a"),
+            "custom metadata: key-a"
+        );
+        assert_eq!(
+            info.metadata_custom.get("key-b").map(String::as_str),
+            Some("val-b"),
+            "custom metadata: key-b"
+        );
     }
 }
