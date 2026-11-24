@@ -22,25 +22,26 @@ pub fn cstring_from_str_fn_arg(arg_name: &str, arg_val: &str) -> Result<CString,
 
 /// Create a String from a C string of the specified length.
 ///
-/// The function is unsafe because:
-/// * It doesn't check for the end NULL byte as it doesn't stop if a NULL byte is before the end of
-///   the string.
-/// * It doesn't check the characters to be UTF-8 valid, if the string contains
-///   invalid UTF-8 bytes. Hence the resulting `String` would have non-deterministic character
-///   value on their position.
-/// * It will read all the bytes of memory region from pointer to length, so if length is larger
-///   than the region, some garbage bytes will be read or a runtime panic may happen.
+/// It doesn't check for the end NULL byte as it doesn't stop if a NULL byte is before the end of
+/// the string.
+///
+/// If the string contains invalid UTF-8 bytes, they are replaced by the Unicode replacement
+/// character (U+FFFD).
+///
+/// The function is unsafe because it will read all the bytes of memory region from pointer to
+/// length, so if length is larger than the region, some garbage bytes will be read or a runtime
+/// panic may happen. The pointer can only be `NULL` when the length is 0.
 pub unsafe fn unchecked_ptr_c_char_and_length_to_string(
     c_chars: *const c_char,
     length: usize,
 ) -> String {
-    let mut chars = String::with_capacity(length);
-
-    for i in 0..length as isize {
-        chars.push(*c_chars.offset(i) as u8 as char)
+    if length == 0 {
+        // The pointer may be `NULL` or dangling, which is not valid for creating a slice.
+        return String::new();
     }
 
-    chars
+    let bytes = std::slice::from_raw_parts(c_chars.cast::<u8>(), length);
+    String::from_utf8_lossy(bytes).into_owned()
 }
 
 #[cfg(test)]
@@ -237,16 +238,34 @@ pub(crate) mod test {
                 );
             }
             {
-                // Case: Invalid UTF-8
-                let expected = String::from("Storj Uplink \u{FFFD} Rust");
-                let cstr = CStr::from_bytes_with_nul_unchecked(expected.as_bytes());
-                let chars = cstr.as_ptr();
+                // Case: Multi-byte UTF-8 characters.
+                let expected = "Storj Uplink \u{e9} \u{4e16} \u{1f980} \u{FFFD} Rust";
 
-                // The values aren't equal because non valid UTF-8 bytes produce a
-                // non-deterministic output.
-                assert_ne!(
-                    unchecked_ptr_c_char_and_length_to_string(chars, expected.len()),
+                assert_eq!(
+                    unchecked_ptr_c_char_and_length_to_string(
+                        expected.as_ptr().cast(),
+                        expected.len()
+                    ),
                     expected,
+                    "str value doesn't match"
+                );
+            }
+            {
+                // Case: Invalid UTF-8
+                let passed = b"Storj Uplink \xff Rust";
+
+                assert_eq!(
+                    unchecked_ptr_c_char_and_length_to_string(passed.as_ptr().cast(), passed.len()),
+                    "Storj Uplink \u{FFFD} Rust",
+                    "str value doesn't match"
+                );
+            }
+            {
+                // Case: Empty.
+                assert_eq!(
+                    unchecked_ptr_c_char_and_length_to_string(std::ptr::null(), 0),
+                    "",
+                    "str value doesn't match"
                 );
             }
         }
