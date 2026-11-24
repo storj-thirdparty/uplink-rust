@@ -87,6 +87,8 @@
 //! When the constructor is named `from_ffi_` it takes ownership of the passed FFI value, which is
 //! a `Guard`, and when the name is `with_ffi_` it doesn't, so it takes a reference to the value.
 //!
+//! The FFI types aren't `Copy`, so their values cannot outlive the guard by copying them implicitly.
+//!
 //! Any `with_ffi_` constructor must always guarantee that make a copy of the fields' values of the
 //! passed FFI value to untangle the two instances and not having dangling pointers. The fields that
 //! are raw pointers are only valid as long as the reference, but the compiler cannot verify it.

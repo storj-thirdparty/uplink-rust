@@ -121,7 +121,10 @@ impl Custom {
         }
 
         // We have ensured that `inner` is not None just above so `unwrap` will never panic.
-        self.inner.as_ref().unwrap().custom_metadata
+        let inner = self.inner.as_ref().unwrap();
+        ulksys::UplinkCustomMetadata {
+            ..inner.custom_metadata
+        }
     }
 }
 
@@ -475,7 +478,7 @@ mod test {
         // SAFETY: `entries` points to `count` valid entries owned by `custom`, which outlives this block.
         unsafe {
             for i in 0..2 {
-                let entry = *c_entries.offset(i);
+                let entry = &*c_entries.offset(i);
 
                 if compare_c_string(entry.key, key1).is_none() {
                     assert_c_string(entry.value, val1);
@@ -501,7 +504,7 @@ mod test {
         let c_entries = c_custom.entries as *const ulksys::UplinkCustomMetadataEntry;
         // SAFETY: `entries` points to `count` valid entries owned by `custom`, which outlives this block.
         unsafe {
-            let entry = *c_entries;
+            let entry = &*c_entries;
             assert_c_string(entry.key, key2);
             assert_c_string(entry.value, val2);
         }

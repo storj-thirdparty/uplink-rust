@@ -125,7 +125,7 @@ impl Config {
         // implemented FFI methods to return valid FFI values with correct lifetimes.
         let uc_res = unsafe {
             Guard::new(ulksys::edge_register_access(
-                self.inner,
+                ulksys::EdgeConfig { ..self.inner },
                 access.as_ffi_access(),
                 uc_opts_ptr,
             ))

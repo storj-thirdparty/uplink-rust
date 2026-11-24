@@ -116,8 +116,10 @@ impl<'a> Config<'a> {
     }
 
     /// Returns the FFI representation of this configuration.
+    ///
+    /// The returned value points to memory that `self` owns, so it's only valid as long as `self`.
     pub(crate) fn as_ffi_config(&self) -> ulksys::UplinkConfig {
-        self.inner
+        ulksys::UplinkConfig { ..self.inner }
     }
 }
 

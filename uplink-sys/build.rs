@@ -155,6 +155,8 @@ fn main() {
         )
         // Also make headers included by main header dependencies of the build
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        // The FFI values own memory that must be freed exactly once, so they must not be copied implicitly.
+        .derive_copy(false)
         // Generate bindings
         .generate()
         .expect("Error generating bindings.")
