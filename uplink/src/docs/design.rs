@@ -79,23 +79,17 @@
 //!
 //! There is usually a public type of this crate that represents the FFI one.
 //!
-//! When the constructor is named `from_ffi_` it takes "ownership" of the passed FFI value, and when
-//! the name is `with_ffi_` it doesn't.
+//! The values that the FFI returns and that have an associated function for freeing them are
+//! wrapped in a `Guard`, which is only visible inside of the crate, as soon as they are returned.
+//! The guard owns the value and frees it when it's dropped, so nothing else must call the FFI free
+//! functions.
 //!
-//! We define the `with_ffi_` constructors when the passed FFI value doesn't have an associated
-//! function for freeing it. This happens on those values that are associated to others and their
-//! resources are freed by the value that holds them. Any `with_ffi_` constructor must always
-//! guarantee that make a copy of the fileds' values of the passed FFI value to untangle the two
-//! instanes and not having dangling pointers.
+//! When the constructor is named `from_ffi_` it takes ownership of the passed FFI value, which is
+//! a `Guard`, and when the name is `with_ffi_` it doesn't, so it takes a reference to the value.
 //!
-//! `from_ffi_` constructors takes ownership, but, unfortunately, this is not from the Rust's
-//! ownership meaning. We cannot enforce the Rust ownership because they are raw pointers or values
-//! of struct types that contain raw pointers, hence the Rust's ownership mechanism isn't applied
-//! due to they are passed by copy.
-//!
-//! This fictional "ownership" means that once the FFI value is used to instantiate one of the
-//! public types, the FFI value must not be used further because the public type instance is the
-//! owner of it and it takes care of freeing it at the right time.
+//! Any `with_ffi_` constructor must always guarantee that make a copy of the fields' values of the
+//! passed FFI value to untangle the two instances and not having dangling pointers. The fields that
+//! are raw pointers are only valid as long as the reference, but the compiler cannot verify it.
 //!
 //! ### The `Ensurer` trait
 //!
@@ -112,29 +106,6 @@
 //!
 //! The method doesn't save of panicking, it explicitly panics when the value is inconsistent
 //! following what we specify in our [panics section](#panics).
-//!
-//! ### Exceptions
-//!
-//! For convenience, the [`Error` type](crate::error::Error) doesn't follow these conventions.
-//!
-//! The [`Error`](crate::error::Error) has a crate level constructor named
-//! [`new_uplink`](crate::error::Error::new_uplink) and the [`error::Uplink`
-//! type](crate::error::Uplink) has a crate level constructor named
-//! [`new`](crate::error::Uplink::new) that don't take ownership nor explicitly panic when the
-//! passed raw pointer is `NULL`.
-//!
-//! This exception exists because:
-//!
-//! * FFI mostly returns errors in "_result_" structs, for example
-//!   [`UplinkBucketResult`](uplink_sys::UplinkBucketResult). These "_result_" types usually have
-//!   their own "_free_" associated function for example
-//!   [`uplink_free_bucket_result`](uplink_sys::uplink_free_bucket_result), hence, a double free
-//!   race condition would happen if the caller needs to free a "_result_" does have an error but
-//!   also a partial "_result value_".
-//! * These two constructors return an `Option` that it's `None` when the passed raw pointer to
-//!   [`UplinkError`](uplink_sys::UplinkError) is `NULL` because it's pretty convenient to handle
-//!   errors more idiomatically than having to always check by `NULL` inequality for calling or not
-//!   the constructor.
 //!
 //! ## From Rust to FFI
 //!

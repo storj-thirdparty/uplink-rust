@@ -43,21 +43,10 @@ impl Error {
     }
 
     /// Convenient constructor for creating an [`Uplink` variant](Self::Uplink).
-    /// It returns None if `err` is `NULL`.
     ///
-    /// See [`Uplink::new`] for knowing about the ownership of `err` after calling this
-    /// constructor.
-    pub(crate) fn new_uplink(err: *mut ulksys::UplinkError) -> Option<Self> {
-        Uplink::new(err).map(Self::Uplink)
-    }
-
-    /// Convenient constructor for creating an [`Uplink` variant](Self::Uplink).
-    /// It returns None if `err` is `NULL`.
-    ///
-    /// It's the same than using the [`new_uplink` constructor](Self::new_uplink) but it takes
-    /// ownership of `err`.
-    pub(crate) fn from_ffi_error(err: *mut ulksys::UplinkError) -> Option<Self> {
-        Uplink::from_ffi_error(err).map(Self::Uplink)
+    /// See [`Uplink::with_ffi_error`].
+    pub(crate) fn with_ffi_error(err: &ulksys::UplinkError) -> Self {
+        Self::Uplink(Uplink::with_ffi_error(err))
     }
 }
 
@@ -224,33 +213,24 @@ pub enum Uplink {
 }
 
 impl Uplink {
-    /// Creates a new instance from a pointer FFI error struct.
-    /// It returns `None` if `err` is `NULL`.
+    /// Creates a new instance from the FFI representation.
     ///
-    /// NOTE The returned instance has a copy of everything that requires from the passed pointer,
-    /// so the ownership of all its resources remains in the caller, hence it must care about
-    /// releasing them. See [implementation design documentation](crate::docs::design).
-    pub(crate) fn new(err: *mut ulksys::UplinkError) -> Option<Self> {
-        if err.is_null() {
-            return None;
-        }
-
-        // SAFETY: We have checked just above that the pointer isn't NULL.
-        let ulkerr = unsafe { *err };
-
-        let msg = if ulkerr.message.is_null() {
+    /// The returned instance has a copy of everything that requires from `err`, so it doesn't take
+    /// ownership of it. See [implementation design documentation](crate::docs::design).
+    pub(crate) fn with_ffi_error(err: &ulksys::UplinkError) -> Self {
+        let msg = if err.message.is_null() {
             String::new()
         } else {
             // SAFETY: We trust the FFI that the error contains valid C strings.
             unsafe {
-                CStr::from_ptr(ulkerr.message)
+                CStr::from_ptr(err.message)
                     .to_str()
                     .expect("invalid FFI error message; it contains non UTF-8 characters")
                     .to_string()
             }
         };
 
-        Some(match ulkerr.code as u32 {
+        match err.code as u32 {
             ulksys::UPLINK_ERROR_INTERNAL => Self::Internal(msg),
             ulksys::UPLINK_ERROR_CANCELED => Self::Canceled(msg),
             ulksys::UPLINK_ERROR_INVALID_HANDLE => Self::InvalidHandle(msg),
@@ -269,21 +249,7 @@ impl Uplink {
             ulksys::EDGE_ERROR_AUTH_DIAL_FAILED => Self::EdgeAuthDialFailed(msg),
             ulksys::EDGE_ERROR_REGISTER_ACCESS_FAILED => Self::EdgeRegisterAccessFailed(msg),
             _ => Self::Unknown(msg),
-        })
-    }
-
-    /// Creates a new instance from a pointer to the FFI error struct.
-    /// It returns `None` if `err` is `NULL`.
-    pub(crate) fn from_ffi_error(err: *mut ulksys::UplinkError) -> Option<Self> {
-        let opt = Self::new(err);
-        if opt.is_some() {
-            // SAFETY: at this point we know that pointer wasn't `NULL` because the option contains
-            // an error so we can free the memory. We trust that FFI safely free the memory of
-            // pointers allocated by itself.
-            unsafe { ulksys::uplink_free_error(err) };
         }
-
-        opt
     }
 }
 

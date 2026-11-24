@@ -5,6 +5,7 @@ pub mod upload;
 pub use upload::Upload;
 
 use crate::error::BoxError;
+use crate::guard::Guard;
 use crate::uplink_c::Ensurer;
 use crate::{error, metadata, Error, Result};
 
@@ -28,102 +29,63 @@ pub struct Object {
 impl Object {
     /// Creates new instance from the FFI representation.
     ///
-    /// When no error an `Option` is returned which is `None` when `uc_obj` is `NULL`. This happens
-    /// in some specific situations.
-    ///
-    /// An [`Error::Internal`](crate::Error::Internal) if `uc_obj`'s key contains invalid UTF-8
-    /// characters or [`metadata::Custom::with_ffi_custom_metadata`] return an error.
-    fn from_ffi_object(uc_obj: *mut ulksys::UplinkObject) -> Result<Option<Self>> {
-        if uc_obj.is_null() {
-            return Ok(None);
-        }
-
-        let uc_obj_ptr = uc_obj;
-        // SAFETY: We have checked just above that the pointer isn't NULL.
-        let uc_obj = unsafe { *uc_obj_ptr };
+    /// It returns an [`Error::Internal`](crate::Error::Internal) if `uc_obj`'s key contains invalid
+    /// UTF-8 characters.
+    fn with_ffi_object(uc_obj: &ulksys::UplinkObject) -> Result<Self> {
         uc_obj.ensure();
 
-        let key;
-        let is_prefix;
-        let metadata_system: metadata::System;
-        let metadata_custom: metadata::Custom;
         // SAFETY: we have check that the `uc_obj` doesn't have fields with NULL pointers through
         // the `ensure` method.
-        unsafe {
-            let cs = CString::from(CStr::from_ptr(uc_obj.key));
-            key = cs.into_string().map_err(|err| {
-                ulksys::uplink_free_object(uc_obj_ptr);
-                Error::new_internal(
-                    "FFI returned an invalid object's key; it contains invalid UTF-8 characters",
-                    BoxError::from(err),
-                )
-            })?;
-            metadata_custom = metadata::Custom::with_ffi_custom_metadata(&uc_obj.custom);
-            metadata_system = metadata::System::with_ffi_system_metadata(&uc_obj.system);
-            is_prefix = uc_obj.is_prefix;
-            ulksys::uplink_free_object(uc_obj_ptr);
-        }
+        let key = CString::from(unsafe { CStr::from_ptr(uc_obj.key) });
+        let key = key.into_string().map_err(|err| {
+            Error::new_internal(
+                "FFI returned an invalid object's key; it contains invalid UTF-8 characters",
+                BoxError::from(err),
+            )
+        })?;
 
-        Ok(Some(Self {
+        Ok(Self {
             key,
-            is_prefix,
-            metadata_system,
-            metadata_custom,
-        }))
+            is_prefix: uc_obj.is_prefix,
+            metadata_system: metadata::System::with_ffi_system_metadata(&uc_obj.system),
+            metadata_custom: metadata::Custom::with_ffi_custom_metadata(&uc_obj.custom),
+        })
     }
 
     /// Creates a new instance from the FFI representation for an object's result.
     ///
-    /// See [`from_ffi_object`](Self::from_ffi_object) why an `Option` is returned when result is
-    /// OK.
+    /// When there isn't an error, it returns `None` if the result doesn't have an object. This
+    /// happens in some specific situations.
     ///
     /// It returns the following errors:
-    /// * an [`Error::new_uplink` constructor](crate::Error::new_uplink), if `uc_result` contains a
-    ///   non `NULL` pointer in the `error` field.
+    /// * an [`Error::Uplink`](crate::Error::Uplink) if `uc_result` contains an error.
     /// * an [`Error::Internal`](crate::Error::Internal) if `uc_result.object`'s key contains
-    ///   invalid UTF-8 characters or [`metadata::Custom::with_ffi_custom_metadata`] return an
-    ///   error.
+    ///   invalid UTF-8 characters.
     pub(crate) fn from_ffi_object_result(
-        uc_result: ulksys::UplinkObjectResult,
+        uc_result: Guard<ulksys::UplinkObjectResult>,
     ) -> Result<Option<Self>> {
-        if let Some(err) = Error::new_uplink(uc_result.error) {
-            // SAFETY: we trust the FFI is safe freeing the memory of a valid pointer.
-            unsafe { ulksys::uplink_free_object_result(uc_result) };
-            return Err(err);
-        }
+        uc_result.check()?;
 
-        // At this point we don't need to free the `uc_result` because the following function free
-        // the `object` pointer and the `error` pointer is `NULL`, and that's what the free function
-        // for the `uc_result` does (i.e. call a free specific function for each pointer returning
-        // without doing anything if it's `NULL`).
-        Self::from_ffi_object(uc_result.object)
+        uc_result.value().map(Self::with_ffi_object).transpose()
     }
 
     /// Creates a new instance from the FFI representation for a commit upload's result.
     ///
     /// It returns the following errors:
-    /// * an [`Error::new_uplink` constructor](crate::Error::new_uplink), if `uc_result` contains a
-    ///   non `NULL` pointer in the `error` field.
+    /// * an [`Error::Uplink`](crate::Error::Uplink) if `uc_result` contains an error.
     /// * an [`Error::Internal`](crate::Error::Internal) if `uc_result.object`'s key contains
-    ///   invalid UTF-8 characters or [`metadata::Custom::with_ffi_custom_metadata`] return an
-    ///   error.
+    ///   invalid UTF-8 characters.
     pub(crate) fn from_ffi_commit_upload_result(
-        uc_result: ulksys::UplinkCommitUploadResult,
+        uc_result: Guard<ulksys::UplinkCommitUploadResult>,
     ) -> Result<Self> {
         uc_result.ensure();
+        uc_result.check()?;
 
-        if let Some(err) = Error::new_uplink(uc_result.error) {
-            // SAFETY: we trust the FFI is safe freeing the memory of a valid pointer.
-            unsafe { ulksys::uplink_free_commit_upload_result(uc_result) };
-            return Err(err);
-        }
-
-        // At this point we don't need to free the `uc_result` because the following function free
-        // the `info` pointer and the `error` pointer is `NULL`, and that's what the free function
-        // for the `uc_result` does (i.e. call a free specific function for each pointer returning
-        // without doing anything if it's `NULL`).
-        Self::from_ffi_object(uc_result.object)
-            .map(|op| op.expect("successful committed upload must always return an object"))
+        Self::with_ffi_object(
+            uc_result
+                .value()
+                .expect("successful committed upload must always return an object"),
+        )
     }
 }
 
@@ -132,14 +94,16 @@ impl Object {
 pub struct Iterator {
     /// The object iterator type of the FFI that an instance of this struct represents and guards
     /// its lifetime until the instance drops.
-    inner: *mut ulksys::UplinkObjectIterator,
+    inner: Guard<*mut ulksys::UplinkObjectIterator>,
 }
 
 impl Iterator {
     /// Creates a new instance from the type exposed by the FFI.
-    pub(crate) fn from_ffi_object_iterator(uc_iterator: *mut ulksys::UplinkObjectIterator) -> Self {
+    pub(crate) fn from_ffi_object_iterator(
+        uc_iterator: Guard<*mut ulksys::UplinkObjectIterator>,
+    ) -> Self {
         assert!(
-            !uc_iterator.is_null(),
+            uc_iterator.value().is_some(),
             "BUG: `uc_iterator` argument cannot be NULL"
         );
 
@@ -155,26 +119,15 @@ impl std::iter::Iterator for Iterator {
         // by them and they don't return any invalid memory references or `null` if next returns
         // `true`.
         unsafe {
-            if !ulksys::uplink_object_iterator_next(self.inner) {
-                let uc_error = ulksys::uplink_object_iterator_err(self.inner);
-                return Error::new_uplink(uc_error).map(Err);
+            if !ulksys::uplink_object_iterator_next(*self.inner) {
+                let uc_error = Guard::new(ulksys::uplink_object_iterator_err(*self.inner));
+                return uc_error.error().map(Err);
             }
 
-            Some(
-                Object::from_ffi_object(ulksys::uplink_object_iterator_item(self.inner)).map(
-                    |op| op.expect("an iterator that indicated that there is a next element always returns it")
-                ),
-            )
-        }
-    }
-}
-
-impl Drop for Iterator {
-    fn drop(&mut self) {
-        // SAFETY: we trust that the FFI is safe freeing the memory of a correct
-        // `UplinkObjectIterator` pointer.
-        unsafe {
-            ulksys::uplink_free_object_iterator(self.inner);
+            let uc_obj = Guard::new(ulksys::uplink_object_iterator_item(*self.inner));
+            Some(Object::with_ffi_object(uc_obj.value().expect(
+                "an iterator that indicated that there is a next element always returns it",
+            )))
         }
     }
 }
@@ -186,25 +139,18 @@ pub struct Download {
     /// lifetime until the instance drops.
     ///
     /// It's an access result
-    inner: ulksys::UplinkDownloadResult,
+    inner: Guard<ulksys::UplinkDownloadResult>,
 }
 
 impl Download {
     /// Creates a new instance from the FFI representation.
     ///
-    /// It returns an error, through the
-    /// [`Error::new_uplink` constructor](crate::Error::new_uplink), if `uc_result` contains a non
-    /// `NULL` pointer in the `error` field.
+    /// It returns an [`Error::Uplink`](crate::Error::Uplink) if `uc_result` contains an error.
     pub(crate) fn from_ffi_download_result(
-        uc_result: ulksys::UplinkDownloadResult,
+        uc_result: Guard<ulksys::UplinkDownloadResult>,
     ) -> Result<Self> {
         uc_result.ensure();
-
-        if let Some(err) = Error::new_uplink(uc_result.error) {
-            // SAFETY: we trust the FFI is safe freeing the memory of a valid pointer.
-            unsafe { ulksys::uplink_free_download_result(uc_result) };
-            return Err(err);
-        }
+        uc_result.check()?;
 
         Ok(Self { inner: uc_result })
     }
@@ -215,12 +161,9 @@ impl Download {
     pub fn info(&self) -> Result<Object> {
         // SAFETY: We trust the FFI is behaving correctly when passing a valid `UplinkDownload`
         // instance.
-        let obj_res = unsafe { ulksys::uplink_download_info(self.inner.download) };
-        if let Some(err) = Error::new_uplink(obj_res.error) {
-            return Err(err);
-        }
+        let obj_res = unsafe { Guard::new(ulksys::uplink_download_info(self.inner.download)) };
 
-        Object::from_ffi_object(obj_res.object)
+        Object::from_ffi_object_result(obj_res)
             .map(|op| op.expect("successful download object info must always return an object"))
     }
 }
@@ -239,10 +182,15 @@ impl std::io::Read for Download {
             let bp = buf.as_mut_ptr();
             // SAFETY: we trust the FFI of dealing with a correct `UplinkDownload` instance and an
             // allocated buffer.
-            let read_res =
-                unsafe { ulksys::uplink_download_read(self.inner.download, bp.cast(), buf.len()) };
+            let read_res = unsafe {
+                Guard::new(ulksys::uplink_download_read(
+                    self.inner.download,
+                    bp.cast(),
+                    buf.len(),
+                ))
+            };
 
-            if let Some(err) = Error::new_uplink(read_res.error) {
+            if let Some(err) = read_res.error() {
                 // According to the Uplink C bindings version that we are targeting v1.7.0 all the
                 // errors are mapped to an specific exported code, except EOF, see
                 // https://github.com/storj/uplink-c/blob/v1.7.0/error.go#L37
@@ -271,13 +219,14 @@ impl std::io::Read for Download {
 
 impl Drop for Download {
     fn drop(&mut self) {
-        // SAFETY: we trust that the FFI is doing correct operations when closing and freeing a
-        // correctly created `UplinkDownloadResult` value.
+        // SAFETY: we trust that the FFI is doing correct operations when closing a correctly created
+        // `UplinkDownloadResult` value, which is freed when `self.inner` is dropped.
         unsafe {
             // At this point we cannot do anything about the error, so discarded.
             // TODO(https://github.com/storj-thirdparty/uplink-rust/issues/51).
-            let _ = ulksys::uplink_close_download(self.inner.download);
-            ulksys::uplink_free_download_result(self.inner);
+            drop(Guard::new(ulksys::uplink_close_download(
+                self.inner.download,
+            )));
         }
     }
 }

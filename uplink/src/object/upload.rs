@@ -1,5 +1,6 @@
 //! Contains information and operations for uploading objects.
 
+use crate::guard::Guard;
 use crate::uplink_c::Ensurer;
 use crate::{metadata, Error, Object, Result};
 
@@ -17,28 +18,25 @@ pub struct Upload {
     ///
     /// It's an upload result because it's the one that holds the upload and allows to free its
     /// memory.
-    ///
-    /// `inner.error` must be NULL when this instance is created and should usually remain NULL
-    /// except for the identified circumstance of the `self.write` method.
-    inner: ulksys::UplinkUploadResult,
+    inner: Guard<ulksys::UplinkUploadResult>,
+    /// The result of the last write when some bytes were written before an error happened.
+    failed_write: Option<Guard<ulksys::UplinkWriteResult>>,
 }
 
 impl Upload {
     /// Creates a new instance from the FFI representation.
     ///
-    /// It returns an error, through the
-    /// [`Error::new_uplink` constructor](crate::Error::new_uplink), if `uc_upload` contains a non
-    /// `NULL` pointer in the `error` field.
-    pub(crate) fn from_ffi_upload_result(uc_upload: ulksys::UplinkUploadResult) -> Result<Self> {
+    /// It returns an [`Error::Uplink`] if the FFI result contains an error.
+    pub(crate) fn from_ffi_upload_result(
+        uc_upload: Guard<ulksys::UplinkUploadResult>,
+    ) -> Result<Self> {
         uc_upload.ensure();
+        uc_upload.check()?;
 
-        if let Some(err) = Error::new_uplink(uc_upload.error) {
-            // SAFETY: we trust the FFI is safe freeing the memory of a correct value.
-            unsafe { ulksys::uplink_free_upload_result(uc_upload) };
-            Err(err)
-        } else {
-            Ok(Self { inner: uc_upload })
-        }
+        Ok(Self {
+            inner: uc_upload,
+            failed_write: None,
+        })
     }
 
     /// Aborts a non-finalized upload.
@@ -48,12 +46,7 @@ impl Upload {
     /// variants in other cases.
     pub fn abort(&mut self) -> Result<()> {
         // SAFETY: we trust the FFI when dealing with a correct instance.
-        let err = unsafe { ulksys::uplink_upload_abort(self.inner.upload) };
-        if let Some(err) = Error::new_uplink(err) {
-            Err(err)
-        } else {
-            Ok(())
-        }
+        unsafe { Guard::new(ulksys::uplink_upload_abort(self.inner.upload)) }.check()
     }
 
     /// Commits the object's data to the store.
@@ -63,12 +56,7 @@ impl Upload {
     /// variants in other cases.
     pub fn commit(&mut self) -> Result<()> {
         // SAFETY: we trust the FFI when dealing with a correct instance.
-        let err = unsafe { ulksys::uplink_upload_commit(self.inner.upload) };
-        if let Some(err) = Error::new_uplink(err) {
-            Err(err)
-        } else {
-            Ok(())
-        }
+        unsafe { Guard::new(ulksys::uplink_upload_commit(self.inner.upload)) }.check()
     }
 
     /// Returns the last information about the uploaded object.
@@ -76,7 +64,7 @@ impl Upload {
     /// It returns an [`Error::Uplink`] if any of the calls to the FFI returns an error.
     pub fn info(&self) -> Result<Object> {
         // SAFETY: we trust the FFI when dealing with a correct instance.
-        let uc_obj_res = unsafe { ulksys::uplink_upload_info(self.inner.upload) };
+        let uc_obj_res = unsafe { Guard::new(ulksys::uplink_upload_info(self.inner.upload)) };
 
         Object::from_ffi_object_result(uc_obj_res)
             .map(|op| op.expect("successful upload info must always return an object"))
@@ -87,16 +75,13 @@ impl Upload {
         // SAFETY: We are sure that FFI doesn't take ownership of the two parameters.
         // Metadata FFI type is obtained from a safe wrapper.
         let err = unsafe {
-            ulksys::uplink_upload_set_custom_metadata(
+            Guard::new(ulksys::uplink_upload_set_custom_metadata(
                 self.inner.upload,
                 metadata.to_ffi_custom_metadata(),
-            )
+            ))
         };
-        if let Some(err) = Error::new_uplink(err) {
-            Err(err)
-        } else {
-            Ok(())
-        }
+
+        err.check()
     }
 }
 
@@ -113,16 +98,11 @@ impl std::io::Write for Upload {
     /// When it returns an error is always a [`std::io::ErrorKind::Other`] and the error payload is
     /// an [`Error::Uplink`].
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        // When self is created, it ensures that `self.inner.error` is NULL, but in order of being
-        // able to return the written bytes when some of them are written but an error has
-        // happened, we keep the returned FFI error in `self.inner.error` and in the next call to
-        // `write` that the caller should to write the rest of the bytes, we return the error
-        // returned on the previous call.
-        if !self.inner.error.is_null() {
-            return Err(std::io::Error::other(
-                Error::new_uplink(self.inner.error)
-                    .expect("BUG: missing a non NULL verification previous to this call"),
-            ));
+        // When some bytes are written but an error happens, we return the number of written bytes
+        // and we keep the result for returning its error in the next call that the caller should do
+        // to write the rest of the bytes.
+        if let Some(err) = self.failed_write.as_ref().and_then(Guard::error) {
+            return Err(std::io::Error::other(err));
         }
 
         // SAFETY: we trust the FFI when dealing with a correct instance.
@@ -133,37 +113,25 @@ impl std::io::Write for Upload {
         // We believe that the parameter is `mut` because it's what _bindgen_ has unfairly
         // generated.
         let uc_res = unsafe {
-            ulksys::uplink_upload_write(
+            Guard::new(ulksys::uplink_upload_write(
                 self.inner.upload,
                 (buf.as_ptr() as *mut u8).cast(),
                 buf.len(),
-            )
+            ))
         };
 
-        if !uc_res.error.is_null() {
+        let written = uc_res.bytes_written as usize;
+        if let Some(err) = uc_res.error() {
             // There is an error and the operation didn't upload any byte, so we return the error
             // directly.
-            if uc_res.bytes_written == 0 {
-                return Err(std::io::Error::other(
-                    Error::new_uplink(uc_res.error)
-                        .expect("BUG: missing a non NULL verification previous to this call"),
-                ));
+            if written == 0 {
+                return Err(std::io::Error::other(err));
             }
 
-            // There is an error but the operation uploaded a few bytes, so keep the error for
-            // returning it on the next call `write` and this call returns the amount of uploaded
-            // bytes.
-            self.inner.error = uc_res.error;
+            self.failed_write = Some(uc_res);
         }
 
-        Ok(uc_res.bytes_written as usize)
-    }
-}
-
-impl Drop for Upload {
-    fn drop(&mut self) {
-        // SAFETY: we trust the FFI is safe freeing the memory of a correct value.
-        unsafe { ulksys::uplink_free_upload_result(self.inner) };
+        Ok(written)
     }
 }
 
@@ -171,12 +139,14 @@ impl Drop for Upload {
 pub struct Iterator {
     /// The upload iterator type of the FFI that an instance of this struct represents and guards
     /// its lifetime until the instance drops.
-    inner: *mut ulksys::UplinkUploadIterator,
+    inner: Guard<*mut ulksys::UplinkUploadIterator>,
 }
 
 impl Iterator {
     /// Creates a new instance from the FFI representation.
-    pub(crate) fn from_ffi_upload_iterator(uc_iterator: *mut ulksys::UplinkUploadIterator) -> Self {
+    pub(crate) fn from_ffi_upload_iterator(
+        uc_iterator: Guard<*mut ulksys::UplinkUploadIterator>,
+    ) -> Self {
         Self { inner: uc_iterator }
     }
 }
@@ -189,22 +159,16 @@ impl std::iter::Iterator for Iterator {
         // them and they don't return any invalid memory references or `null` if next returns
         // `true`.
         unsafe {
-            if !ulksys::uplink_upload_iterator_next(self.inner) {
-                let uc_error = ulksys::uplink_upload_iterator_err(self.inner);
-                return Error::new_uplink(uc_error).map(Err);
+            if !ulksys::uplink_upload_iterator_next(*self.inner) {
+                let uc_error = Guard::new(ulksys::uplink_upload_iterator_err(*self.inner));
+                return uc_error.error().map(Err);
             }
 
-            Some(Ok(Info::from_ffi_upload_info(
-                ulksys::uplink_upload_iterator_item(self.inner),
-            )))
+            let uc_upload = Guard::new(ulksys::uplink_upload_iterator_item(*self.inner));
+            Some(Ok(Info::with_ffi_upload_info(uc_upload.value().expect(
+                "an iterator that indicated that there is a next element always returns it",
+            ))))
         }
-    }
-}
-
-impl Drop for Iterator {
-    fn drop(&mut self) {
-        // SAFETY: we trust the FFI is safe freeing the memory of a correct pointer.
-        unsafe { ulksys::uplink_free_upload_iterator(self.inner) };
     }
 }
 
@@ -224,66 +188,47 @@ pub struct Info {
 
 impl Info {
     /// Creates a new instance from the FFI representation.
-    fn from_ffi_upload_info(uc_upload: *mut ulksys::UplinkUploadInfo) -> Self {
-        assert!(
-            !uc_upload.is_null(),
-            "BUG: `uc_upload` argument cannot be NULL"
-        );
-        // SAFETY: we just checked above that this pointer isn't NULL.
-        let upload = unsafe { *uc_upload };
-        upload.ensure();
+    fn with_ffi_upload_info(uc_upload: &ulksys::UplinkUploadInfo) -> Self {
+        uc_upload.ensure();
 
-        let is_prefix = upload.is_prefix;
-        let upload_id;
-        let key;
         // SAFETY: We have guarantee that upload fields aren't null through the `ensure` method
-        // call of the `Ensurer` trait. We make a copy of the C string pointers to Rust strings,
-        // and we free the memory of the C strings to not leak memory.
-        unsafe {
-            upload_id = CStr::from_ptr(upload.upload_id)
+        // call of the `Ensurer` trait.
+        let (upload_id, key) = unsafe {
+            (
+                CStr::from_ptr(uc_upload.upload_id),
+                CStr::from_ptr(uc_upload.key),
+            )
+        };
+
+        Self {
+            upload_id: upload_id
                 .to_str()
                 .expect("FFI returned an invalid upload's ID; it contains invalid UTF-8 characters")
-                .to_string();
-            key = CStr::from_ptr(upload.key)
+                .to_string(),
+            key: key
                 .to_str()
                 .expect(
                     "FFI returned an invalid upload's key; it contains invalid UTF-8 characters",
                 )
-                .to_string();
-
-            ulksys::uplink_free_upload_info(uc_upload);
-        }
-
-        Self {
-            upload_id,
-            key,
-            is_prefix,
-            metadata_system: metadata::System::with_ffi_system_metadata(&upload.system),
-            metadata_custom: metadata::Custom::with_ffi_custom_metadata(&upload.custom),
+                .to_string(),
+            is_prefix: uc_upload.is_prefix,
+            metadata_system: metadata::System::with_ffi_system_metadata(&uc_upload.system),
+            metadata_custom: metadata::Custom::with_ffi_custom_metadata(&uc_upload.custom),
         }
     }
 
     /// Creates a new instance from the FFI representation for a info's result.
     ///
-    /// It returns an error, through the
-    /// [`Error::new_uplink` constructor](crate::Error::new_uplink), if `uc_result` contains a non
-    /// `NULL` pointer in the `error` field.
+    /// It returns an [`Error::Uplink`] if `uc_result` contains an error.
     pub(crate) fn from_ffi_upload_info_result(
-        uc_result: ulksys::UplinkUploadInfoResult,
+        uc_result: Guard<ulksys::UplinkUploadInfoResult>,
     ) -> Result<Self> {
         uc_result.ensure();
+        uc_result.check()?;
 
-        if let Some(err) = Error::new_uplink(uc_result.error) {
-            // SAFETY: we trust the FFI is safe freeing the memory of a valid pointer.
-            unsafe { ulksys::uplink_free_upload_info_result(uc_result) };
-            return Err(err);
-        }
-
-        // At this point we don't need to free the `uc_result` because the following function free
-        // the `info` pointer and the `error` pointer is `NULL`, and that's what the free function
-        // for the `uc_result` does (i.e. call a free specific function for each pointer returning
-        // without doing anything if it's `NULL`).
-        Ok(Self::from_ffi_upload_info(uc_result.info))
+        Ok(Self::with_ffi_upload_info(uc_result.value().expect(
+            "successful upload info result must always have an upload info",
+        )))
     }
 }
 
@@ -301,34 +246,26 @@ pub struct Part {
 
 impl Part {
     /// Creates a new instance from the FFI representation.
-    fn from_ffi_part(uc_part: *mut ulksys::UplinkPart) -> Self {
-        assert!(!uc_part.is_null(), "BUG: `uc_part` argument cannot be NULL");
-
-        // SAFETY: we just checked above that this pointer isn't NULL.
-        let part = unsafe { *uc_part };
-        let modified = if part.modified < 0 {
+    fn with_ffi_part(uc_part: &ulksys::UplinkPart) -> Self {
+        let modified = if uc_part.modified < 0 {
             0
         } else {
-            part.modified as u64
+            uc_part.modified as u64
         };
 
-        let part_number = part.part_number;
-        let size = part.size;
-        let mut etag = Vec::with_capacity(part.etag_length);
+        let mut etag = Vec::with_capacity(uc_part.etag_length);
         // SAFETY: we trust the FFI in returning a correct length of the array that the `etag`
         // pointer points to, hence we believe that we are not accessing to a memory outside of the
         // array's bounds.
         unsafe {
-            for i in 0..part.etag_length as isize {
-                etag.push(*part.etag.offset(i) as u8)
+            for i in 0..uc_part.etag_length as isize {
+                etag.push(*uc_part.etag.offset(i) as u8)
             }
-
-            ulksys::uplink_free_part(uc_part);
         }
 
         Self {
-            part_number,
-            size,
+            part_number: uc_part.part_number,
+            size: uc_part.size,
             modified: time::Duration::from_secs(modified),
             etag,
         }
@@ -336,23 +273,16 @@ impl Part {
 
     /// Creates a new instance from the FFI representation for a part's result.
     ///
-    /// It returns an error, through the
-    /// [`Error::new_uplink` constructor](crate::Error::new_uplink), if `uc_result` contains a non
-    /// `NULL` pointer in the `error` field.
-    pub(crate) fn from_ffi_part_result(uc_result: ulksys::UplinkPartResult) -> Result<Self> {
+    /// It returns an [`Error::Uplink`] if `uc_result` contains an error.
+    pub(crate) fn from_ffi_part_result(uc_result: Guard<ulksys::UplinkPartResult>) -> Result<Self> {
         uc_result.ensure();
+        uc_result.check()?;
 
-        if let Some(err) = Error::new_uplink(uc_result.error) {
-            // SAFETY: we trust the FFI is safe freeing the memory of a valid pointer.
-            unsafe { ulksys::uplink_free_part_result(uc_result) };
-            return Err(err);
-        }
-
-        // At this point we don't need to free the `uc_result` because the following function free
-        // the `part` pointer and the `error` pointer is `NULL`, and that's what the free function
-        // for the `uc_result` does (i.e. call a free specific function for each pointer returning
-        // without doing anything if it's `NULL`).
-        Ok(Self::from_ffi_part(uc_result.part))
+        Ok(Self::with_ffi_part(
+            uc_result
+                .value()
+                .expect("successful part result must always have a part"),
+        ))
     }
 }
 
@@ -364,30 +294,25 @@ pub struct PartUpload {
     ///
     /// It's an upload result because it's the one that holds the part upload and allows to free its
     /// memory.
-    ///
-    /// `inner.error` must be NULL when this instance is created and should usually remain NULL
-    /// except for the identified circumstance of the `self.write` method.
-    inner: ulksys::UplinkPartUploadResult,
+    inner: Guard<ulksys::UplinkPartUploadResult>,
+    /// The result of the last write when some bytes were written before an error happened.
+    failed_write: Option<Guard<ulksys::UplinkWriteResult>>,
 }
 
 impl PartUpload {
     /// Creates a new instance from the FFI representation.
     ///
-    /// It returns an error, through the
-    /// [`Error::new_uplink` constructor](crate::Error::new_uplink), if `uc_upload` contains a non
-    /// `NULL` pointer in the `error` field.
+    /// It returns an [`Error::Uplink`] if the FFI result contains an error.
     pub(crate) fn from_ffi_part_upload_result(
-        uc_pupload: ulksys::UplinkPartUploadResult,
+        uc_pupload: Guard<ulksys::UplinkPartUploadResult>,
     ) -> Result<Self> {
         uc_pupload.ensure();
+        uc_pupload.check()?;
 
-        if let Some(err) = Error::new_uplink(uc_pupload.error) {
-            // SAFETY: we trust the FFI is safe freeing the memory of a valid value.
-            unsafe { ulksys::uplink_free_part_upload_result(uc_pupload) };
-            Err(err)
-        } else {
-            Ok(Self { inner: uc_pupload })
-        }
+        Ok(Self {
+            inner: uc_pupload,
+            failed_write: None,
+        })
     }
 
     /// Aborts the part upload.
@@ -398,12 +323,7 @@ impl PartUpload {
     /// variants in other cases.
     pub fn abort(&mut self) -> Result<()> {
         // SAFETY: we trust the FFI when dealing with a correct instance.
-        let err = unsafe { ulksys::uplink_part_upload_abort(self.inner.part_upload) };
-        if let Some(err) = Error::new_uplink(err) {
-            Err(err)
-        } else {
-            Ok(())
-        }
+        unsafe { Guard::new(ulksys::uplink_part_upload_abort(self.inner.part_upload)) }.check()
     }
 
     /// Commits the part upload to the store.
@@ -413,12 +333,7 @@ impl PartUpload {
     /// variants in other cases.
     pub fn commit(&mut self) -> Result<()> {
         // SAFETY: we trust the FFI when dealing with a correct instance.
-        let err = unsafe { ulksys::uplink_part_upload_commit(self.inner.part_upload) };
-        if let Some(err) = Error::new_uplink(err) {
-            Err(err)
-        } else {
-            Ok(())
-        }
+        unsafe { Guard::new(ulksys::uplink_part_upload_commit(self.inner.part_upload)) }.check()
     }
 
     /// Returns the last information about the uploaded part.
@@ -426,7 +341,8 @@ impl PartUpload {
     /// It returns an [`Error::Uplink`] if any of the calls to the FFI returns an error.
     pub fn info(&self) -> Result<Part> {
         // SAFETY: we trust the FFI when dealing with a correct instance.
-        let uc_part_res = unsafe { ulksys::uplink_part_upload_info(self.inner.part_upload) };
+        let uc_part_res =
+            unsafe { Guard::new(ulksys::uplink_part_upload_info(self.inner.part_upload)) };
 
         Part::from_ffi_part_result(uc_part_res)
     }
@@ -452,17 +368,13 @@ impl PartUpload {
         // byte (NULL byte) and we pass it to the FFI.
         // `self.inner` is guarantee to be valid by the constructor of this struct.
         let err = unsafe {
-            ulksys::uplink_part_upload_set_etag(
+            Guard::new(ulksys::uplink_part_upload_set_etag(
                 self.inner.part_upload,
                 c_etag.as_ptr() as *mut std::os::raw::c_char,
-            )
+            ))
         };
 
-        if let Some(err) = Error::new_uplink(err) {
-            Err(err)
-        } else {
-            Ok(())
-        }
+        err.check()
     }
 }
 
@@ -474,16 +386,11 @@ impl std::io::Write for PartUpload {
     }
 
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        // When self is created, it ensures that `self.inner.error` is NULL, but in order of being
-        // able to return the written bytes when some of them are written but an error has
-        // happened, we keep the returned FFI error in `self.inner.error` and in the next call to
-        // `write` that the caller should to write the rest of the bytes, we return the error
-        // returned on the previous call.
-        if !self.inner.error.is_null() {
-            return Err(std::io::Error::other(
-                Error::new_uplink(self.inner.error)
-                    .expect("BUG: missing a non NULL verification previous to this call"),
-            ));
+        // When some bytes are written but an error happens, we return the number of written bytes
+        // and we keep the result for returning its error in the next call that the caller should do
+        // to write the rest of the bytes.
+        if let Some(err) = self.failed_write.as_ref().and_then(Guard::error) {
+            return Err(std::io::Error::other(err));
         }
 
         // SAFETY: we trust the FFI when dealing with a correct instance.
@@ -494,37 +401,25 @@ impl std::io::Write for PartUpload {
         // We believe that the parameter is `mut` because it's what _bindgen_ has unfairly
         // generated.
         let uc_res = unsafe {
-            ulksys::uplink_part_upload_write(
+            Guard::new(ulksys::uplink_part_upload_write(
                 self.inner.part_upload,
                 (buf.as_ptr() as *mut u8).cast(),
                 buf.len(),
-            )
+            ))
         };
 
-        if !uc_res.error.is_null() {
+        let written = uc_res.bytes_written as usize;
+        if let Some(err) = uc_res.error() {
             // There is an error and the operation didn't upload any byte, so we return the error
             // directly.
-            if uc_res.bytes_written == 0 {
-                return Err(std::io::Error::other(
-                    Error::new_uplink(uc_res.error)
-                        .expect("BUG: missing a non NULL verification previous to this call"),
-                ));
+            if written == 0 {
+                return Err(std::io::Error::other(err));
             }
 
-            // There is an error but the operation uploaded a few bytes, so keep the error for
-            // returning it on the next call `write` and this call returns the amount of uploaded
-            // bytes.
-            self.inner.error = uc_res.error;
+            self.failed_write = Some(uc_res);
         }
 
-        Ok(uc_res.bytes_written as usize)
-    }
-}
-
-impl Drop for PartUpload {
-    fn drop(&mut self) {
-        // SAFETY: we trust the FFI is safe freeing the memory of a valid value.
-        unsafe { ulksys::uplink_free_part_upload_result(self.inner) };
+        Ok(written)
     }
 }
 
@@ -532,14 +427,16 @@ impl Drop for PartUpload {
 pub struct PartIterator {
     /// The upload iterator type of the FFI that an instance of this struct represents and guards
     /// its lifetime until the instance drops.
-    inner: *mut ulksys::UplinkPartIterator,
+    inner: Guard<*mut ulksys::UplinkPartIterator>,
 }
 
 impl PartIterator {
     /// Creates a new instance from the type exposed by the FFI.
-    pub(crate) fn from_ffi_part_iterator(uc_iterator: *mut ulksys::UplinkPartIterator) -> Self {
+    pub(crate) fn from_ffi_part_iterator(
+        uc_iterator: Guard<*mut ulksys::UplinkPartIterator>,
+    ) -> Self {
         assert!(
-            !uc_iterator.is_null(),
+            uc_iterator.value().is_some(),
             "BUG: `uc_iterator` argument cannot be NULL"
         );
 
@@ -555,21 +452,84 @@ impl std::iter::Iterator for PartIterator {
         // them and they don't return any invalid memory references or `null` if next returns
         // `true`.
         unsafe {
-            if !ulksys::uplink_part_iterator_next(self.inner) {
-                let uc_error = ulksys::uplink_part_iterator_err(self.inner);
-                return Error::new_uplink(uc_error).map(Err);
+            if !ulksys::uplink_part_iterator_next(*self.inner) {
+                let uc_error = Guard::new(ulksys::uplink_part_iterator_err(*self.inner));
+                return uc_error.error().map(Err);
             }
 
-            Some(Ok(Part::from_ffi_part(ulksys::uplink_part_iterator_item(
-                self.inner,
+            let uc_part = Guard::new(ulksys::uplink_part_iterator_item(*self.inner));
+            Some(Ok(Part::with_ffi_part(uc_part.value().expect(
+                "an iterator that indicated that there is a next element always returns it",
             ))))
         }
     }
 }
 
-impl Drop for PartIterator {
-    fn drop(&mut self) {
-        // SAFETY: we trust the FFI is safe freeing the memory of a correct pointer.
-        unsafe { ulksys::uplink_free_part_iterator(self.inner) };
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use crate::guard::test::{c_array, c_box, c_string};
+
+    use std::ptr;
+
+    #[test]
+    fn test_info_from_ffi_upload_info_result() {
+        let entries = [("key-a", "val-a"), ("key-b", "val-b")].map(|(key, value)| {
+            ulksys::UplinkCustomMetadataEntry {
+                key: c_string(key),
+                key_length: key.len(),
+                value: c_string(value),
+                value_length: value.len(),
+            }
+        });
+        // SAFETY: the pointers are valid and nothing else frees them.
+        let uc_result = unsafe {
+            Guard::new(ulksys::UplinkUploadInfoResult {
+                info: c_box(ulksys::UplinkUploadInfo {
+                    upload_id: c_string("upload-id"),
+                    key: c_string("object-key"),
+                    is_prefix: false,
+                    system: ulksys::UplinkSystemMetadata {
+                        created: 10,
+                        expires: 20,
+                        content_length: 30,
+                    },
+                    custom: ulksys::UplinkCustomMetadata {
+                        entries: c_array(entries),
+                        count: 2,
+                    },
+                }),
+                error: ptr::null_mut(),
+            })
+        };
+
+        let info = Info::from_ffi_upload_info_result(uc_result).expect("valid upload info");
+
+        assert_eq!(info.upload_id, "upload-id", "upload ID");
+        assert_eq!(info.key, "object-key", "key");
+        assert!(!info.is_prefix, "is prefix");
+        assert_eq!(
+            info.metadata_system.created,
+            time::Duration::from_secs(10),
+            "system metadata: created"
+        );
+        assert_eq!(
+            info.metadata_system.expires,
+            Some(time::Duration::from_secs(20)),
+            "system metadata: expires"
+        );
+        assert_eq!(
+            info.metadata_system.content_length, 30,
+            "system metadata: content length"
+        );
+        assert_eq!(info.metadata_custom.count(), 2, "custom metadata: count");
+        for (key, value) in [("key-a", "val-a"), ("key-b", "val-b")] {
+            assert_eq!(
+                info.metadata_custom.get(key).map(String::as_str),
+                Some(value),
+                "custom metadata: {key}"
+            );
+        }
     }
 }

@@ -1,6 +1,7 @@
 //! Storj DCS Access Grant and bound types.
 
 use crate::config::Config;
+use crate::guard::Guard;
 use crate::uplink_c::{string_from_ffi_string_result, Ensurer};
 use crate::{helpers, EncryptionKey, Error, Result};
 
@@ -24,7 +25,7 @@ pub struct Grant {
     ///
     /// It's an access result because it's the one that holds the access grant and allows to free
     /// its memory.
-    inner: ulksys::UplinkAccessResult,
+    inner: Guard<ulksys::UplinkAccessResult>,
 }
 
 impl Grant {
@@ -33,7 +34,8 @@ impl Grant {
         let saccess = helpers::cstring_from_str_fn_arg("serialized_access", serialized_access)?;
 
         // SAFETY: we are passing a pointer to a valid CString to the FFI.
-        let res = unsafe { ulksys::uplink_parse_access(saccess.as_ptr() as *mut c_char) };
+        let res =
+            unsafe { Guard::new(ulksys::uplink_parse_access(saccess.as_ptr() as *mut c_char)) };
         Self::from_ffi_access_result(res)
     }
 
@@ -52,11 +54,11 @@ impl Grant {
         // to return the result so the result will still valid when the call to this method ends
         // which is when those strings will be dropped.
         let res = unsafe {
-            ulksys::uplink_request_access_with_passphrase(
+            Guard::new(ulksys::uplink_request_access_with_passphrase(
                 satellite_addr.as_ptr() as *mut c_char,
                 api_key.as_ptr() as *mut c_char,
                 passphrase.as_ptr() as *mut c_char,
-            )
+            ))
         };
 
         Self::from_ffi_access_result(res)
@@ -84,13 +86,12 @@ impl Grant {
         // to return the result so the result will still valid when the call to this method ends
         // which is when those strings will be dropped.
         let res = unsafe {
-            *ulksys::uplink_config_request_access_with_passphrase(
+            Guard::new(ulksys::uplink_config_request_access_with_passphrase(
                 config.as_ffi_config(),
                 satellite_addr.as_ptr() as *mut c_char,
                 api_key.as_ptr() as *mut c_char,
                 passphrase.as_ptr() as *mut c_char,
-            )
-            .ensure()
+            ))
         };
 
         Self::from_ffi_access_result(res)
@@ -98,17 +99,12 @@ impl Grant {
 
     /// Creates a Grant instance from the FFI type.
     ///
-    /// An [`Error::new_uplink` constructor](crate::Error::new_uplink), if `ffi_result` contains a
-    ///  non `NULL` pointer in the `error` field.
-    fn from_ffi_access_result(ffi_result: ulksys::UplinkAccessResult) -> Result<Self> {
+    /// It returns an [`Error::Uplink`](crate::Error::Uplink) if `ffi_result` contains an error.
+    fn from_ffi_access_result(ffi_result: Guard<ulksys::UplinkAccessResult>) -> Result<Self> {
         ffi_result.ensure();
+        ffi_result.check()?;
 
-        Error::new_uplink(ffi_result.error).map_or(Ok(Grant { inner: ffi_result }), |err| {
-            // SAFETY: FFI free function doesn't free if the result fields are `NULL` and this
-            // result should only be instantiated through the same FFI.
-            unsafe { ulksys::uplink_free_access_result(ffi_result) };
-            Err(err)
-        })
+        Ok(Grant { inner: ffi_result })
     }
 
     /// Overrides the root encryption key for the prefix in bucket with the encryption key.
@@ -130,25 +126,22 @@ impl Grant {
         // to return the result so the result will still valid after the call to this method ends
         // which is when those strings will be dropped.
         let uc_err = unsafe {
-            ulksys::uplink_access_override_encryption_key(
+            Guard::new(ulksys::uplink_access_override_encryption_key(
                 self.inner.access,
                 bucket.as_ptr() as *mut c_char,
                 prefix.as_ptr() as *mut c_char,
                 encryption_key.as_ffi_encryption_key(),
-            )
+            ))
         };
 
-        Error::new_uplink(uc_err).map_or(Ok(()), |err| {
-            helpers::drop_uplink_sys_error(uc_err);
-            Err(err)
-        })
+        uc_err.check()
     }
 
     /// Returns the satellite node URL associated with this access grant.
     pub fn satellite_address(&self) -> Result<String> {
         // SAFETY: we have checked that the FFI value attached to this instance is valid at its
         // construction time.
-        let res = unsafe { ulksys::uplink_access_satellite_address(self.inner.access) };
+        let res = unsafe { Guard::new(ulksys::uplink_access_satellite_address(self.inner.access)) };
 
         string_from_ffi_string_result(res)
     }
@@ -158,7 +151,7 @@ impl Grant {
     pub fn serialize(&self) -> Result<String> {
         // SAFETY: we have checked that the FFI value attached to this instance is valid at its
         // construction time.
-        let res = unsafe { ulksys::uplink_access_serialize(self.inner.access) };
+        let res = unsafe { Guard::new(ulksys::uplink_access_serialize(self.inner.access)) };
 
         string_from_ffi_string_result(res)
     }
@@ -191,25 +184,23 @@ impl Grant {
             // to return the result so the result will still valid when the call to this method ends
             // which is when the vector will be dropped.
             res = unsafe {
-                *ulksys::uplink_access_share(
+                Guard::new(ulksys::uplink_access_share(
                     self.inner.access,
                     permission.as_ffi_permissions(),
                     ulk_prefixes.as_mut_ptr(),
                     ulk_prefixes.len() as i64,
-                )
-                .ensure()
+                ))
             };
         } else {
             // SAFETY: it's safe to pass nil to the FFI function to indicate that there isn't any
             // prefix restriction.
             res = unsafe {
-                *ulksys::uplink_access_share(
+                Guard::new(ulksys::uplink_access_share(
                     self.inner.access,
                     permission.as_ffi_permissions(),
                     std::ptr::null_mut(),
                     0,
-                )
-                .ensure()
+                ))
             };
         }
 
@@ -219,14 +210,6 @@ impl Grant {
     /// Returns the FFI representation of this access grant.
     pub(crate) fn as_ffi_access(&self) -> *mut ulksys::UplinkAccess {
         self.inner.access
-    }
-}
-
-impl Drop for Grant {
-    fn drop(&mut self) {
-        // SAFETY: this type implementation guarantees that the FFI value since an instance is
-        // created until it's dropped.
-        unsafe { ulksys::uplink_free_access_result(self.inner) };
     }
 }
 
@@ -451,6 +434,35 @@ mod test {
             );
         } else {
             panic!("expected an invalid argument error");
+        }
+    }
+
+    #[test]
+    fn test_grant_new_invalid_access() {
+        // Several iterations because a double free isn't always detected on the first one.
+        for _ in 0..10 {
+            match Grant::new("invalid").expect_err("when passing an invalid access grant") {
+                Error::Uplink(error::Uplink::Internal(_)) => {}
+                err => panic!("expected an Uplink internal error, got: {err:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_grant_share_invalid_permission() {
+        // This access grant is invalidated so it isn't leaking any valid access grant.
+        let grant = Grant::new("15kvZYL7aMhTXFU6vne8iedGfvvZdcbaDLAZ9SiN1yChpAYupdDw3SMfyHqA7pETdFjhe8SnjLox4tnq5hYbZWfCm443kv3fWV8ZWNkKwaq1mbrmyz3pPd1WSxiJn2g5tYKWoPpzvG1ygjDaB4yEq9zdpYSaH5DiVHrbaWmq6mCwRrnEF1ANdVcA2gXNbFpmSKp2i59fA14RRdZYVTrvY6rWKyG35p35eenp3ePyjwoXNSe9Cs8KvMRteVcozNiMwwuYCm4ExwP8os5Eqydqwjpx8ic8hnirkn7ThBbLLAtJBLtu").expect("valid serialized access grant");
+
+        // Several iterations because a double free isn't always detected on the first one.
+        for _ in 0..10 {
+            // The permission doesn't allow any operation.
+            match grant
+                .share(&Permission::new(), None)
+                .expect_err("when sharing with an empty permission")
+            {
+                Error::Uplink(error::Uplink::Internal(_)) => {}
+                err => panic!("expected an Uplink internal error, got: {err:?}"),
+            }
         }
     }
 

@@ -17,6 +17,7 @@ pub mod docs;
 pub mod edge;
 pub(crate) mod encryption_key;
 pub mod error;
+mod guard;
 pub(crate) mod helpers;
 pub mod metadata;
 pub mod object;
