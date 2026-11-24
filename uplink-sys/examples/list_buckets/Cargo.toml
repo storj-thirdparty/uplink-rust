@@ -8,4 +8,6 @@ edition = "2018"
 
 [dependencies]
 uplink-sys = { version = "^0", path = "../../" }
-chrono = "0.4.19"
+chrono = "0.4.45"
+# Standalone example, not part of the repository workspace.
+[workspace]
