@@ -28,7 +28,7 @@ jobs:
       BINDGEN_EXTRA_CLANG_ARGS: "--sysroot=/usr/aarch64-linux-gnu"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up `aarch64-unknown-linux-gnu` Rust target
         run: rustup target add aarch64-unknown-linux-gnu

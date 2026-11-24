@@ -29,7 +29,7 @@ jobs:
         working-directory: uplink
     steps:
       - name: Checkouts repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
       - name: Build uplink-sys
         run: make build
         working-directory: .
@@ -49,7 +49,7 @@ jobs:
         working-directory: uplink
     steps:
       - name: Checkouts repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
       - name: Build uplink-sys
         run: make build
         working-directory: .
