@@ -55,6 +55,8 @@ integration-tests-env-down:
 .tmp/up:
 	mkdir -p .tmp
 	cd .tmp; git clone https://github.com/storj/up.git
-	cd .tmp/up; git checkout v1.2.10
+	# No storj-up release uses the ghcr.io/storj/up registry yet (v1.2.11 still
+	# points to img.dev.storj.io), so pin a commit until there is one.
+	cd .tmp/up; git checkout aadf57c8edc56df0cea67f71e010397c8800379c
 
 .tmp/up/docker-compose.yaml: .tmp/up/storj-up
