@@ -1,10 +1,10 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::DateTime;
 use std::ffi::{CStr, CString};
 
 fn datetime_string_from_unix_time(t: i64) -> String {
     format!(
         "{}",
-        DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(t, 0), Utc)
+        DateTime::from_timestamp(t, 0).expect("timestamp in range")
     )
 }
 
