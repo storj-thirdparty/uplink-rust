@@ -306,8 +306,8 @@ pub(crate) mod test {
     #[test]
     #[should_panic = "unexpected value at memory position +3. Want= 3, have= 6"]
     fn test_assert_raw_pointer_panic_unmatch() {
-        let have = vec![0, 1, 2, 6, 4];
-        let want = vec![0, 1, 2, 3, 4];
+        let have = [0, 1, 2, 6, 4];
+        let want = [0, 1, 2, 3, 4];
 
         assert_raw_pointer(have.as_ptr(), want.as_ptr(), want.len());
     }

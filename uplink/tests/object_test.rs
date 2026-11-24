@@ -45,7 +45,7 @@ fn integration_object_stat() {
     // Check stat_object.
     let object_info = upload.info().expect("upload object info not to fail");
     let object_info_stat = project
-        .stat_object(&bucket_name, &object_key)
+        .stat_object(&bucket_name, object_key)
         .expect("stat an existing object not to fail");
 
     assert_eq!(
@@ -251,12 +251,12 @@ fn integration_object_listing_prefix() {
             .expect("list object iterator to return an object in the list");
         let object_info = res.expect("an object not an error");
 
-        if &object_info.key == object1_key {
+        if object_info.key == object1_key {
             visited_keys |= 1;
             continue;
         }
 
-        if &object_info.key == object2_prefix {
+        if object_info.key == object2_prefix {
             assert!(object_info.is_prefix, "listed object is prefix");
             visited_keys |= 2;
             continue;
@@ -345,7 +345,7 @@ fn integration_object_listing_recursive() {
             .expect("list object iterator to return an object in the list");
         let object_info = res.expect("an object not an error");
 
-        if &object_info.key == object1_key {
+        if object_info.key == object1_key {
             visited_keys |= 1;
             continue;
         }
@@ -420,10 +420,10 @@ fn integration_object_copy() {
     // List objects to see if the copies exist.
     let mut list_ops = options::ListObjects::default();
     list_ops.system = true;
-    let mut it = project
+    let it = project
         .list_objects(&bucket_name, Some(&list_ops))
         .expect("list objects");
-    while let Some(robj) = it.next() {
+    for robj in it {
         let obj = robj.expect("no error");
         if obj.key == object_key {
             assert_eq!(

@@ -7,8 +7,6 @@ use std::io::{Read, Write};
 use std::time::Duration;
 use std::vec::Vec;
 
-use rand::{self, RngCore};
-
 mod common;
 
 #[test]
@@ -134,7 +132,7 @@ fn integration_upload_multipart_commit() {
     // Uploading 2 parts in reverse order using `data`.
     // A part must be at least of 5 MiB.
     let mut data = vec![0u8; 10 * 1024 * 1024];
-    rand::thread_rng().fill_bytes(&mut data);
+    rand::fill(&mut data[..]);
     let mut part = project
         .upload_part(
             &bucket_name,
@@ -292,7 +290,7 @@ fn integration_upload_multipart_abort_and_list_parts_cursor() {
     // Uploading 2 parts.
     // A part must be at least of 5 MiB.
     let mut data = vec![0u8; 10 * 1024 * 1024];
-    rand::thread_rng().fill_bytes(&mut data);
+    rand::fill(&mut data[..]);
 
     let mut part = project
         .upload_part(
@@ -329,10 +327,7 @@ fn integration_upload_multipart_abort_and_list_parts_cursor() {
             &bucket_name,
             object_multipart_key,
             &upload_info.upload_id,
-            Some(&options::ListUploadParts {
-                cursor: 0,
-                ..Default::default()
-            }),
+            Some(&options::ListUploadParts { cursor: 0 }),
         )
         .expect("list upload parts");
 
@@ -354,10 +349,7 @@ fn integration_upload_multipart_abort_and_list_parts_cursor() {
             &bucket_name,
             object_multipart_key,
             &upload_info.upload_id,
-            Some(&options::ListUploadParts {
-                cursor: 0,
-                ..Default::default()
-            }),
+            Some(&options::ListUploadParts { cursor: 0 }),
         )
         .expect("list upload parts");
     assert!(it.next().is_none(), "no parts in the part iterator");

@@ -1,3 +1,6 @@
+// Each integration test binary uses only part of this shared module.
+#![allow(dead_code)]
+
 use std::env;
 use std::time::{Duration, SystemTime};
 
@@ -34,7 +37,7 @@ impl Environment {
     }
 }
 
-pub fn generate_name<'a>(ctx: &'a str) -> String {
+pub fn generate_name(ctx: &str) -> String {
     let d = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("system time since Unix epoch failed");
@@ -45,11 +48,7 @@ pub fn generate_name<'a>(ctx: &'a str) -> String {
 /// timestamp less `leeway`.
 ///
 /// `timestamp` must be calculated since epoch.
-pub fn assert_epoch_timestamp_from_now<'a>(
-    timestamp: Duration,
-    leeway: Duration,
-    ctx_msg: &'a str,
-) {
+pub fn assert_epoch_timestamp_from_now(timestamp: Duration, leeway: Duration, ctx_msg: &str) {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("system time since Unix epoch failed");

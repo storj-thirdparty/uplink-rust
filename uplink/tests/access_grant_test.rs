@@ -27,7 +27,7 @@ fn integration_grant_new() {
 #[test]
 fn integration_grant_request_access_with_passphrase() {
     let env = common::Environment::load();
-    let grant = Grant::request_access_with_passphrase(
+    let _grant = Grant::request_access_with_passphrase(
         common::SATELLITE_ADDR,
         &env.api_key,
         &env.encryption_secret,
@@ -200,7 +200,7 @@ fn integration_grant_share() {
         };
 
         // Deleting objects with the write-only access grant.
-        let res = proj_restricted.delete_object(&bucket1_name, &object_key_writeonly);
+        let res = proj_restricted.delete_object(&bucket1_name, object_key_writeonly);
         assert!(
             res.is_ok(),
             "write-only access grant returns no error when deleting objects",
