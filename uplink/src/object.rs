@@ -178,7 +178,7 @@ impl std::io::Read for Download {
         // Retry in case that zero bytes are read but no error is returned. We retry 3 times for
         // being safe of not looping infinitely despite 1 retry should always be enough.
         // See Uplink issue: https://github.com/storj/uplink/issues/99.
-        for _ in 1..3 {
+        for _ in 0..=3 {
             let bp = buf.as_mut_ptr();
             // SAFETY: we trust the FFI of dealing with a correct `UplinkDownload` instance and an
             // allocated buffer.
