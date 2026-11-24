@@ -1,9 +1,11 @@
 //! Storj DCS Edge services credentials.
 
+use crate::guard::Guard;
 use crate::uplink_c::Ensurer;
 use crate::{Error, Result};
 
 use std::ffi::CStr;
+use std::os::raw::c_char;
 
 use uplink_sys as ulksys;
 
@@ -20,72 +22,49 @@ pub struct Gateway {
 }
 
 impl Gateway {
+    /// Creates a new instance from the FFI representation for a credentials' result.
+    ///
+    /// It returns the following errors:
+    /// * an [`Error::Uplink`] if `uc_result` contains an error.
+    /// * an [`Error::Internal`] if any of the credentials contains invalid UTF-8 characters.
     pub(crate) fn from_ffi_credentials_result(
-        uc_result: ulksys::EdgeCredentialsResult,
+        uc_result: Guard<ulksys::EdgeCredentialsResult>,
     ) -> Result<Self> {
         uc_result.ensure();
+        uc_result.check()?;
 
-        if let Some(err) = Error::new_uplink(uc_result.error) {
-            // SAFETY: we trust the FFI is safe freeing the memory of a valid pointer.
-            unsafe { ulksys::edge_free_credentials_result(uc_result) };
-            return Err(err);
-        }
+        let creds = uc_result
+            .value()
+            .expect("successful credentials result must always have credentials");
+        creds.ensure();
 
-        let access_key_id: String;
-        let secret_key: String;
-        let endpoint: String;
-        // SAFETY: we have checked that the `uc_result` isn't an error so `credentials` field isn't
-        // NULL through the `ensure` method of the result. Inside of the block we check with the
-        // credentials ensure method that their fields aren't NULL, so we are not accessing to any
-        // NULL pointer.
-        unsafe {
-            // Likely these values shouldn't contain invalid UTF-8 characters, but we don't panic
-            // if they contain some and we return an internal error because we see it's a limitation
-            // of Rust and C interoperability and consumers of this crate would have a chance to
-            // deal with them appropriately.
-            let creds = *uc_result.credentials;
-            creds.ensure();
-
-            access_key_id = CStr::from_ptr(creds.access_key_id)
+        // Likely these values shouldn't contain invalid UTF-8 characters, but we don't panic if
+        // they contain some and we return an internal error because we see it's a limitation of
+        // Rust and C interoperability and consumers of this crate would have a chance to deal with
+        // them appropriately.
+        let to_string = |c_str: *const c_char, err_msg| {
+            // SAFETY: we have checked that the fields of the credentials aren't NULL through their
+            // `ensure` method.
+            let c_str = unsafe { CStr::from_ptr(c_str) };
+            c_str
                 .to_str()
-                .map_err(|err| {
-                    ulksys::edge_free_credentials_result(uc_result);
-                    Error::new_internal(
-                    "FFI returned an invalid access key ID; it contains invalid UTF-8 characters",
-                    err.into(),
-                    )
-                })?
-                .to_string();
-
-            secret_key = CStr::from_ptr(creds.secret_key)
-                .to_str()
-                .map_err(|err| {
-                    ulksys::edge_free_credentials_result(uc_result);
-                    Error::new_internal(
-                        "FFI returned an invalid secret key; it contains invalid UTF-8 characters",
-                        err.into(),
-                    )
-                })?
-                .to_string();
-
-            endpoint = CStr::from_ptr(creds.endpoint)
-                .to_str()
-                .map_err(|err| {
-                    ulksys::edge_free_credentials_result(uc_result);
-                    Error::new_internal(
-                        "FFI returned an invalid endpoint; it contains invalid UTF-8 characters",
-                        err.into(),
-                    )
-                })?
-                .to_string();
-
-            ulksys::edge_free_credentials_result(uc_result);
-        }
+                .map(String::from)
+                .map_err(|err| Error::new_internal(err_msg, err.into()))
+        };
 
         Ok(Self {
-            access_key_id,
-            secret_key,
-            endpoint,
+            access_key_id: to_string(
+                creds.access_key_id,
+                "FFI returned an invalid access key ID; it contains invalid UTF-8 characters",
+            )?,
+            secret_key: to_string(
+                creds.secret_key,
+                "FFI returned an invalid secret key; it contains invalid UTF-8 characters",
+            )?,
+            endpoint: to_string(
+                creds.endpoint,
+                "FFI returned an invalid endpoint; it contains invalid UTF-8 characters",
+            )?,
         })
     }
 }

@@ -1,6 +1,7 @@
 //! Storj DCS linksharing service operations and related types.
 
-use crate::uplink_c::{string_from_ffi_string_result, Ensurer};
+use crate::guard::Guard;
+use crate::uplink_c::string_from_ffi_string_result;
 use crate::{helpers, Result};
 
 use std::ffi::CString;
@@ -31,7 +32,7 @@ pub fn share_url(
     let access_key = helpers::cstring_from_str_fn_arg("access_key_id", access_key_id)?;
     let bucket = helpers::cstring_from_str_fn_arg("bucket", bucket)?;
     let key = helpers::cstring_from_str_fn_arg("key", key)?;
-    let res: ulksys::UplinkStringResult;
+    let res;
 
     // SAFETY: We are sure the CString(s) are valid because we created them from valid Rust strings.
     // We  get raw pointers to them and to pass them to the FFI function.
@@ -47,21 +48,21 @@ pub fn share_url(
         if let Some(o) = opts {
             let edge_opts = o.as_ffi_options_share_url();
             let c_opts = &edge_opts as *const ulksys::EdgeShareURLOptions;
-            res = ulksys::edge_join_share_url(
+            res = Guard::new(ulksys::edge_join_share_url(
                 c_base_url,
                 c_access_key,
                 c_bucket,
                 c_key,
                 c_opts as *mut ulksys::EdgeShareURLOptions,
-            );
+            ));
         } else {
-            res = ulksys::edge_join_share_url(
+            res = Guard::new(ulksys::edge_join_share_url(
                 c_base_url,
                 c_access_key,
                 c_bucket,
                 c_key,
                 ptr::null_mut(),
-            );
+            ));
         }
 
         // Retake ownership from C for dropping them and not leaking memory.
@@ -71,7 +72,6 @@ pub fn share_url(
         let _ = CString::from_raw(c_key);
     }
 
-    res.ensure();
     string_from_ffi_string_result(res)
 }
 

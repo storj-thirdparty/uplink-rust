@@ -1,6 +1,7 @@
 //! Storj DCS Edge services configuration.
 
 use crate::edge::credentials;
+use crate::guard::Guard;
 use crate::{access, helpers, Error, Result};
 
 use std::ffi::CString;
@@ -123,7 +124,11 @@ impl Config {
         // SAFETY: we trust the FFI is safe creating an instance of its own types and rely in our
         // implemented FFI methods to return valid FFI values with correct lifetimes.
         let uc_res = unsafe {
-            ulksys::edge_register_access(self.inner, access.as_ffi_access(), uc_opts_ptr)
+            Guard::new(ulksys::edge_register_access(
+                self.inner,
+                access.as_ffi_access(),
+                uc_opts_ptr,
+            ))
         };
 
         credentials::Gateway::from_ffi_credentials_result(uc_res)

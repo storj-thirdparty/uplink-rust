@@ -1,5 +1,6 @@
 //! Convenient methods implemented for the original `uplink-sys` types.
 
+use crate::guard::Guard;
 use crate::{Error, Result};
 
 use std::ffi::CStr;
@@ -187,37 +188,23 @@ impl Ensurer for ulksys::EdgeCredentialsResult {
 /// * [Uplink error](crate::error::Uplink) if `ffi_result` contains an error.
 /// * [Internal error](crate::error::Internal) if the string contains invalid UTF-8 characters.
 ///
-/// It takes ownership of `ffi_result`, hence this function frees `ffi_result` before returning.
+/// It takes ownership of `ffi_result`, so it's freed before returning.
 pub(crate) fn string_from_ffi_string_result(
-    ffi_result: ulksys::UplinkStringResult,
+    ffi_result: Guard<ulksys::UplinkStringResult>,
 ) -> Result<String> {
     ffi_result.ensure();
+    ffi_result.check()?;
 
-    if let Some(e) = Error::new_uplink(ffi_result.error) {
-        // SAFETY: the FFI release result memory of those fields that they aren't `NULL` otherwise
-        // it doesn't do anything. Anyway at this point there was an error so at least the `error`
-        // field isn't `NULL`.
-        unsafe { ulksys::uplink_free_string_result(ffi_result) };
-        return Err(e);
-    }
-
-    let c_str;
     // SAFETY: we have checked that `ffi_result` is valid and it doesn't have an error so the
     // `string` field isn't `NULL`.
-    unsafe {
-        c_str = CStr::from_ptr(ffi_result.string);
-    };
+    let c_str = unsafe { CStr::from_ptr(ffi_result.string) };
 
-    let res = String::from_utf8(Vec::from(c_str.to_bytes())).map_err(|err| {
+    String::from_utf8(Vec::from(c_str.to_bytes())).map_err(|err| {
         Error::new_internal(
             "FFI returned an invalid string; it contains invalid UTF-8 characters",
             err.into(),
         )
-    });
-    // SAFETY: we have copied the C string in the previous call, so we can free pointer safely.
-    unsafe { ulksys::uplink_free_string_result(ffi_result) };
-
-    res
+    })
 }
 
 #[cfg(test)]

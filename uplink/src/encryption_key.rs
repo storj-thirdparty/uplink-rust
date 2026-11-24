@@ -1,7 +1,8 @@
 //! Storj DCS Encryption key.
 
+use crate::guard::Guard;
 use crate::uplink_c::Ensurer;
-use crate::{helpers, Error, Result};
+use crate::{helpers, Result};
 
 use uplink_sys as ulksys;
 
@@ -12,7 +13,7 @@ pub struct EncryptionKey {
     /// lifetime until the instances drops.
     /// It's an encryption result because it's the one that holds the encryption
     /// key and allows to free its memory.
-    inner: ulksys::UplinkEncryptionKeyResult,
+    inner: Guard<ulksys::UplinkEncryptionKeyResult>,
 }
 
 impl EncryptionKey {
@@ -33,20 +34,15 @@ impl EncryptionKey {
         // the `salt` parameter to be mutable but the FFI function doesn't mutate it despite that
         // the function parameters is specified as mutable.
         let uc_res = unsafe {
-            ulksys::uplink_derive_encryption_key(
+            Guard::new(ulksys::uplink_derive_encryption_key(
                 passphrase.as_ptr() as *mut c_char,
                 salt.as_ptr() as *mut c_void,
                 salt.len(),
-            )
+            ))
         };
 
         uc_res.ensure();
-
-        if let Some(err) = Error::new_uplink(uc_res.error) {
-            // SAFETY: we trust the FFI is safe freeing the memory of a valid pointer.
-            unsafe { ulksys::uplink_free_encryption_key_result(uc_res) };
-            return Err(err);
-        }
+        uc_res.check()?;
 
         Ok(Self { inner: uc_res })
     }
@@ -76,6 +72,41 @@ mod test {
             );
         } else {
             panic!("expected an invalid argument error");
+        }
+    }
+
+    #[test]
+    fn test_drop_frees_ffi_encryption_key() {
+        use crate::access::Grant;
+
+        // This access grant is invalidated so it isn't leaking any valid access grant.
+        let grant = Grant::new("15kvZYL7aMhTXFU6vne8iedGfvvZdcbaDLAZ9SiN1yChpAYupdDw3SMfyHqA7pETdFjhe8SnjLox4tnq5hYbZWfCm443kv3fWV8ZWNkKwaq1mbrmyz3pPd1WSxiJn2g5tYKWoPpzvG1ygjDaB4yEq9zdpYSaH5DiVHrbaWmq6mCwRrnEF1ANdVcA2gXNbFpmSKp2i59fA14RRdZYVTrvY6rWKyG35p35eenp3ePyjwoXNSe9Cs8KvMRteVcozNiMwwuYCm4ExwP8os5Eqydqwjpx8ic8hnirkn7ThBbLLAtJBLtu").expect("valid serialized access grant");
+
+        // Uses the encryption key through its handle, because the memory of the FFI value cannot be
+        // accessed after dropping the key. The FFI never reuses handles.
+        let use_handle = |handle| {
+            let mut key = ulksys::UplinkEncryptionKey { _handle: handle };
+            // SAFETY: all the pointers are valid during the call to the function.
+            unsafe {
+                Guard::new(ulksys::uplink_access_override_encryption_key(
+                    grant.as_ffi_access(),
+                    c"a-bucket".as_ptr(),
+                    c"prefix/".as_ptr(),
+                    &mut key,
+                ))
+            }
+            .check()
+        };
+
+        let key = EncryptionKey::derive("Rust test", &[0]).expect("derive encryption key");
+        // SAFETY: the pointer is valid until the key is dropped.
+        let handle = unsafe { (*key.as_ffi_encryption_key())._handle };
+        use_handle(handle).expect("before dropping the key");
+
+        drop(key);
+        match use_handle(handle).expect_err("after dropping the key") {
+            Error::Uplink(error::Uplink::InvalidHandle(_)) => {}
+            err => panic!("expected an Uplink invalid handle error, got: {err:?}"),
         }
     }
 }
