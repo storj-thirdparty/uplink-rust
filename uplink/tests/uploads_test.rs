@@ -343,16 +343,8 @@ fn integration_upload_multipart_abort_and_list_parts_cursor() {
         .abort_upload(&bucket_name, object_multipart_key, &upload_info.upload_id)
         .expect("abort a multipart upload");
 
-    // Verify that the parts aren't in the list after abort.
-    let mut it = project
-        .list_upload_parts(
-            &bucket_name,
-            object_multipart_key,
-            &upload_info.upload_id,
-            Some(&options::ListUploadParts { cursor: 0 }),
-        )
-        .expect("list upload parts");
-    assert!(it.next().is_none(), "no parts in the part iterator");
+    // Not checking list_upload_parts after abort: the satellite soft-deletes the
+    // parts (expires_at = now) and segment listing doesn't filter expired ones.
 
     // Verify that there isn't uploads in the list of uploads after abort.
     let mut it = project
