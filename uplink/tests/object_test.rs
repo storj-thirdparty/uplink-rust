@@ -11,7 +11,7 @@ mod common;
 fn integration_object_stat() {
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(&access_grant);
+    let project = &mut Project::open(&access_grant).expect("open project");
 
     let bucket_name = common::generate_name("object-stat");
     let (_bucket, _ok) = project.create_bucket(&bucket_name).expect("create bucket");
@@ -99,7 +99,7 @@ fn integration_object_stat() {
 fn integration_object_listing_metadata() {
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(&access_grant);
+    let project = &mut Project::open(&access_grant).expect("open project");
 
     let bucket_name = common::generate_name("object-listing-metadata");
     let (_bucket, _ok) = project.create_bucket(&bucket_name).expect("create bucket");
@@ -212,7 +212,7 @@ fn integration_object_listing_metadata() {
 fn integration_object_listing_prefix() {
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(&access_grant);
+    let project = &mut Project::open(&access_grant).expect("open project");
 
     let bucket_name = common::generate_name("object-listing-prefix");
     let (_bucket, _ok) = project.create_bucket(&bucket_name).expect("create bucket");
@@ -305,7 +305,7 @@ fn integration_object_listing_prefix() {
 fn integration_object_listing_recursive() {
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(&access_grant);
+    let project = &mut Project::open(&access_grant).expect("open project");
 
     let bucket_name = common::generate_name("object-listing-recursive");
     let (_bucket, _ok) = project.create_bucket(&bucket_name).expect("create bucket");
@@ -379,7 +379,7 @@ fn integration_object_copy() {
 
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(&access_grant);
+    let project = &mut Project::open(&access_grant).expect("open project");
 
     let bucket_name = common::generate_name("object-copy");
     let (_bucket, _ok) = project.create_bucket(&bucket_name).expect("create bucket");
@@ -503,7 +503,7 @@ fn integration_object_copy() {
 fn integration_object_move() {
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(&access_grant);
+    let project = &mut Project::open(&access_grant).expect("open project");
 
     let bucket_name = common::generate_name("object-move");
     let (_bucket, _ok) = project.create_bucket(&bucket_name).expect("create bucket");
@@ -597,7 +597,7 @@ fn integration_object_move() {
 fn integration_object_update_metadata() {
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(&access_grant);
+    let project = &mut Project::open(&access_grant).expect("open project");
 
     let bucket_name = common::generate_name("object-listing-metadata");
     let (_bucket, _ok) = project.create_bucket(&bucket_name).expect("create bucket");

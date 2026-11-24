@@ -164,7 +164,7 @@
 //! ```ignore
 //! use uplink::Project;
 //!
-//! let project = Project::open(&access);
+//! let project = Project::open(&access).expect("open project");
 //! ```
 //!
 //! Projects allow you to manage buckets and objects within buckets.

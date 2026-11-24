@@ -13,7 +13,7 @@ mod common;
 fn integration_upload_commit_and_abort() {
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(&access_grant);
+    let project = &mut Project::open(&access_grant).expect("open project");
 
     let bucket_name = common::generate_name("upload");
     let (_bucket, _ok) = project.create_bucket(&bucket_name).expect("create bucket");
@@ -88,7 +88,7 @@ fn integration_upload_commit_and_abort() {
 fn integration_upload_multipart_commit() {
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(&access_grant);
+    let project = &mut Project::open(&access_grant).expect("open project");
 
     let bucket_name = common::generate_name("upload");
     let (_bucket, _ok) = project.create_bucket(&bucket_name).expect("create bucket");
@@ -276,7 +276,7 @@ fn integration_upload_multipart_commit() {
 fn integration_upload_multipart_abort_and_list_parts_cursor() {
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(&access_grant);
+    let project = &mut Project::open(&access_grant).expect("open project");
 
     let bucket_name = common::generate_name("upload");
     let (_bucket, _ok) = project.create_bucket(&bucket_name).expect("create bucket");
@@ -371,7 +371,7 @@ fn integration_upload_multipart_abort_and_list_parts_cursor() {
 fn integration_upload_multipart_commit_custom_metadata() {
     let env = common::Environment::load();
     let access_grant = Grant::new(&env.access_grant).expect("access grant parsing");
-    let project = &mut Project::open(&access_grant);
+    let project = &mut Project::open(&access_grant).expect("open project");
 
     let bucket_name = common::generate_name("upload");
     let (_bucket, _ok) = project.create_bucket(&bucket_name).expect("create bucket");

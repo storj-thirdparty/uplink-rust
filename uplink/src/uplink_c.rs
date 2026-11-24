@@ -110,6 +110,16 @@ impl Ensurer for ulksys::UplinkPartUploadResult {
     }
 }
 
+impl Ensurer for ulksys::UplinkProjectResult {
+    fn ensure(&self) -> &Self {
+        assert!(
+            !self.project.is_null() || !self.error.is_null(),
+            "FFI returned an invalid UplinkProjectResult; project and error fields are both NULL"
+        );
+        self
+    }
+}
+
 impl Ensurer for ulksys::UplinkStringResult {
     fn ensure(&self) -> &Self {
         assert!(
@@ -674,6 +684,45 @@ mod test {
         };
 
         pupload_res.ensure();
+    }
+
+    #[test]
+    fn test_ensurer_project_result_valid() {
+        {
+            // Has a project.
+            let project_res = ulksys::UplinkProjectResult {
+                project: &mut ulksys::UplinkProject { _handle: 0 },
+                error: ptr::null_mut(),
+            };
+
+            project_res.ensure();
+        }
+
+        {
+            // Has an error.
+            let project_res = ulksys::UplinkProjectResult {
+                project: ptr::null_mut(),
+                error: &mut ulksys::UplinkError {
+                    code: 0,
+                    message: ptr::null_mut(),
+                },
+            };
+
+            project_res.ensure();
+        }
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "FFI returned an invalid UplinkProjectResult; project and error fields are both NULL"
+    )]
+    fn test_ensurer_project_result_invalid_both_null() {
+        let project_res = ulksys::UplinkProjectResult {
+            project: ptr::null_mut(),
+            error: ptr::null_mut(),
+        };
+
+        project_res.ensure();
     }
 
     #[test]
