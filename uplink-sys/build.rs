@@ -127,6 +127,10 @@ fn main() {
     // Only rerun when an input changes. Cargo scans directories for changes.
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=uplink-c");
+    // DOCS_RS selects the precompiled libraries, and Go reads GOFLAGS and CC.
+    for var in ["DOCS_RS", "GOFLAGS", "CC"] {
+        println!("cargo:rerun-if-env-changed={var}");
+    }
 
     // Manually link to core and security libs on MacOS
     //
