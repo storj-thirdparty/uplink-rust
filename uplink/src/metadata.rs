@@ -412,7 +412,7 @@ mod test {
         custom.insert(String::from(key2), String::from(val2));
 
         assert_eq!(custom.count(), 2, "number of entries");
-        for entry in (&custom).iter() {
+        for entry in custom.iter() {
             if entry.0 == &String::from(key1) && entry.1 == &String::from(val1) {
                 continue;
             }
@@ -472,8 +472,9 @@ mod test {
         assert_eq!(c_custom.count, 2, "count");
 
         let c_entries = c_custom.entries as *const ulksys::UplinkCustomMetadataEntry;
+        // SAFETY: `entries` points to `count` valid entries owned by `custom`, which outlives this block.
         unsafe {
-            for i in 0..1 {
+            for i in 0..2 {
                 let entry = *c_entries.offset(i);
 
                 if compare_c_string(entry.key, key1).is_none() {
@@ -498,6 +499,7 @@ mod test {
         assert_eq!(c_custom.count, 1, "count");
 
         let c_entries = c_custom.entries as *const ulksys::UplinkCustomMetadataEntry;
+        // SAFETY: `entries` points to `count` valid entries owned by `custom`, which outlives this block.
         unsafe {
             let entry = *c_entries;
             assert_c_string(entry.key, key2);

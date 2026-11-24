@@ -21,7 +21,7 @@ fn integration_config_register_access() {
         .expect("Gateway credentials");
     assert_eq!(env.aws_access_key_id, creds.access_key_id, "access key ID");
     assert_eq!(env.aws_secret_access_key, creds.secret_key, "secret key");
-    assert!(creds.endpoint != "", "not empty endpoint");
+    assert!(!creds.endpoint.is_empty(), "not empty endpoint");
 }
 
 #[test]
